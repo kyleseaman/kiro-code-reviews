@@ -1,0 +1,59 @@
+name: Kiro Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for existing review
+        id: check
+        run: |
+          MARKER="<!-- kiro-review-complete -->"
+          COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate -q '.[].body')
+          if echo "$COMMENTS" | grep -qF "$MARKER"; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Review already posted — skipping"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Kiro CLI
+        if: steps.check.outputs.skip == 'false'
+        run: curl -fsSL https://cli.kiro.dev/install | bash
+
+      - name: Generate PR diff
+        if: steps.check.outputs.skip == 'false'
+        run: gh pr diff "$PR_NUMBER" > /tmp/pr.diff
+
+      - name: Run Kiro code review
+        if: steps.check.outputs.skip == 'false'
+        env:
+          KIRO_API_KEY: ${{ secrets.KIRO_API_KEY }}
+          KIRO_LOG_NO_COLOR: "1"
+        run: |
+          kiro-cli chat \
+            --no-interactive \
+            --agent code-reviewer \
+            --trust-tools=read,write,subagent \
+            "Review the code diff at /tmp/pr.diff. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
+
+      - name: Post review to PR
+        if: steps.check.outputs.skip == 'false'
+        run: bash .github/scripts/post-review.sh
+
+      - name: Post marker comment
+        if: steps.check.outputs.skip == 'false'
+        run: gh pr comment "$PR_NUMBER" --body "<!-- kiro-review-complete -->"

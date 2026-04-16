@@ -21,13 +21,15 @@ jobs:
       - name: Check for existing review
         id: check
         run: |
-          MARKER="<!-- kiro-review-complete -->"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          MARKER="<!-- kiro-review-${HEAD_SHA} -->"
           COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate -q '.[].body')
           if echo "$COMMENTS" | grep -qF "$MARKER"; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Review already posted — skipping"
+            echo "Review already posted for ${HEAD_SHA} — skipping"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "marker=$MARKER" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Install Kiro CLI
@@ -37,6 +39,26 @@ jobs:
       - name: Generate PR diff
         if: steps.check.outputs.skip == 'false'
         run: gh pr diff "$PR_NUMBER" > /tmp/pr.diff
+
+      - name: Fetch issue context
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
+          PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
+          ISSUE_NUMS=$(echo "$PR_BODY" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' | grep -oE '[0-9]+' || true)
+
+          if [ -n "$ISSUE_NUMS" ]; then
+            echo "Linked issues found: $ISSUE_NUMS"
+            echo "" > /tmp/issue-context.md
+            for NUM in $ISSUE_NUMS; do
+              echo "--- Issue #${NUM} ---" >> /tmp/issue-context.md
+              gh issue view "$NUM" --json title,body -q '"# \(.title)\n\(.body)"' >> /tmp/issue-context.md 2>/dev/null || echo "(Could not fetch issue #${NUM})" >> /tmp/issue-context.md
+              echo "" >> /tmp/issue-context.md
+            done
+          else
+            echo "No linked issues found"
+            echo "No linked issue context available." > /tmp/issue-context.md
+          fi
 
       - name: Run Kiro code review
         if: steps.check.outputs.skip == 'false'
@@ -48,7 +70,7 @@ jobs:
             --no-interactive \
             --agent code-reviewer \
             --trust-tools=read,write,subagent \
-            "Review the code diff at /tmp/pr.diff. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
+            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
         if: steps.check.outputs.skip == 'false'
@@ -56,4 +78,4 @@ jobs:
 
       - name: Post marker comment
         if: steps.check.outputs.skip == 'false'
-        run: gh pr comment "$PR_NUMBER" --body "<!-- kiro-review-complete -->"
+        run: gh pr comment "$PR_NUMBER" --body "${{ steps.check.outputs.marker }}"

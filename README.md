@@ -11,28 +11,32 @@ Automated PR code reviews powered by [Kiro CLI](https://kiro.dev/cli/) in headle
 
 ```mermaid
 flowchart LR
-    A[PR opened] --> B{Already reviewed?}
+    A[PR opened/updated] --> B{Already reviewed\nthis SHA?}
     B -- Yes --> C[Skip]
     B -- No --> D[Install Kiro CLI]
     D --> E[Generate diff]
-    E --> F[Coordinator agent]
+    E --> E2[Fetch linked issue context]
+    E2 --> F[Coordinator agent]
     F --> G[🔴 Security subagent]
     F --> H[🔵 Quality subagent]
+    F --> F2[🟣 Design review]
     G --> I[Merge findings]
     H --> I
+    F2 --> I
     I --> J[Post inline comments + summary]
-    J --> K[Post marker comment]
+    J --> K[Post SHA-scoped marker]
 ```
 
 1. A pull request is opened or updated
-2. The workflow checks for a marker comment — if found, the review is skipped
+2. The workflow checks for a SHA-scoped marker comment — if found for the current HEAD, the review is skipped. New pushes get a fresh review.
 3. Kiro CLI is installed and the PR diff is generated via `gh pr diff`
-4. The `code-reviewer` coordinator agent spawns two subagents **in parallel**:
-   - `code-security` — focused on security vulnerabilities
-   - `code-quality` — focused on bugs, error handling, and code quality
-5. The coordinator merges findings from both subagents and deduplicates
-6. Findings are posted as a single PR review with inline comments on specific lines
-7. A hidden marker comment is posted to prevent duplicate reviews
+4. Linked issue context is fetched from the PR body (parses `Closes #N`, `Fixes #N`, etc.)
+5. The `code-reviewer` coordinator agent reads the issue context, then spawns two subagents **in parallel**:
+   - `code-security` — focused on security vulnerabilities, with codebase awareness for sibling files
+   - `code-quality` — focused on bugs, error handling, code quality, and test coverage gaps
+6. The coordinator performs its own **design review** — evaluating whether the PR fully addresses the linked issue, uses the right abstraction layer, and doesn't miss sibling components
+7. All findings are merged, deduplicated, and posted as a single PR review with inline comments
+8. A SHA-scoped marker comment is posted to prevent duplicate reviews for the same commit
 
 ---
 
@@ -44,10 +48,14 @@ flowchart LR
 | 🟡 **Bug detection** | Null access, off-by-one errors, race conditions, resource leaks |
 | 🟠 **Error handling** | Swallowed exceptions, missing error checks |
 | 🔵 **Code quality** | Unnecessary complexity, dead code, poor naming |
+| 🟣 **Design review** | Issue completeness, abstraction layer, sibling components, over-engineering |
+| 🟤 **Test coverage** | Missing tests for new behavior, untested exports, stale test updates |
 | 🧩 **Parallel subagents** | Security and quality reviews run simultaneously via Kiro subagents |
+| 🔗 **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
+| 🔍 **Codebase-aware** | Agents grep sibling files to catch patterns missed in the diff |
 | 💬 **Inline comments** | Findings posted on the exact lines in the PR diff |
 | 📝 **Summary** | Overall review summary posted as the review body |
-| 🔒 **One-time review** | Runs once per PR — subsequent pushes don't re-trigger |
+| 🔄 **Per-commit review** | SHA-scoped markers — new pushes get fresh reviews |
 
 ---
 
@@ -107,6 +115,10 @@ The action posts a PR review that looks like this:
 
 > 🟡 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
 
+> 🟣 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
+
+> 🟤 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
+
 ---
 
 ## Customization
@@ -151,29 +163,32 @@ on:
 
 ### Re-running a review
 
-Delete the `<!-- kiro-review-complete -->` marker comment from the PR, then push a new commit or re-run the workflow.
+Push a new commit — the review is SHA-scoped, so each new push gets a fresh review automatically. To force a re-review of the same commit, delete its `<!-- kiro-review-{SHA} -->` marker comment from the PR and re-run the workflow.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│  GitHub Actions Workflow                     │
-│                                              │
-│  1. Check marker → 2. Install CLI → 3. Diff │
-│                                              │
-│  4. kiro-cli (coordinator agent)             │
-│     ├── spawns code-security (parallel)      │
-│     ├── spawns code-quality  (parallel)      │
-│     └── merges → /tmp/kiro-review.json       │
-│                                              │
-│  5. post-review.sh → gh api (PR review)      │
-│  6. Post marker comment                      │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  GitHub Actions Workflow                          │
+│                                                   │
+│  1. Check SHA marker → 2. Install CLI → 3. Diff  │
+│  4. Fetch linked issue context                    │
+│                                                   │
+│  5. kiro-cli (coordinator agent)                  │
+│     ├── reads issue context                       │
+│     ├── spawns code-security (parallel)           │
+│     ├── spawns code-quality  (parallel)           │
+│     ├── performs design review                    │
+│     └── merges → /tmp/kiro-review.json            │
+│                                                   │
+│  6. post-review.sh → gh api (PR review)           │
+│  7. Post SHA-scoped marker comment                │
+└──────────────────────────────────────────────────┘
 ```
 
-The coordinator agent delegates analysis to specialized subagents that run in parallel with their own context. Each subagent writes findings to a separate JSON file. The coordinator reads both, deduplicates, and writes a merged result that the posting script submits as a single PR review.
+The coordinator agent reads the linked issue context first, then delegates line-level analysis to specialized subagents that run in parallel with codebase awareness. Each subagent writes findings to a separate JSON file. The coordinator performs its own design review, reads all findings, deduplicates, and writes a merged result that the posting script submits as a single PR review.
 
 ---
 
@@ -206,7 +221,8 @@ The coordinator agent delegates analysis to specialized subagents that run in pa
 | Workflow doesn't trigger | Ensure the workflow file is on the default branch |
 | "API key" errors | Verify `KIRO_API_KEY` is set in repo secrets |
 | No review posted | Check the workflow logs — the agent may not have found issues |
-| Review posted twice | The marker comment check may have failed — look for `<!-- kiro-review-complete -->` in PR comments |
+| Review posted on every push | The SHA-scoped marker check may have failed — look for `<!-- kiro-review-{SHA} -->` in PR comments |
+| No issue context | Ensure the PR body contains `Closes #N`, `Fixes #N`, or `Resolves #N` linking to an issue |
 | Inline comments on wrong lines | The agent parses line numbers from diff hunk headers — complex rebases can cause drift |
 
 ---

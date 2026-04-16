@@ -1,7 +1,7 @@
 {
-  "name": "code-quality",
-  "description": "Reviews PR diffs for bugs, error handling, and code quality issues",
-  "prompt": "file://./prompts/code-quality.md",
+  "name": "code-bugs",
+  "description": "Scans PR diffs for obvious bugs, error handling issues, and test coverage gaps",
+  "prompt": "file://./prompts/code-bugs.md",
   "tools": ["read", "write", "grep"],
   "allowedTools": ["read", "write", "grep", "@auggie"],
   "model": "claude-sonnet-4-6-20250725",

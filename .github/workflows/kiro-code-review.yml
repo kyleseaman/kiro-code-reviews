@@ -40,6 +40,20 @@ jobs:
           gh pr diff "$PR_NUMBER" > /tmp/pr-raw.diff
           bash .github/scripts/annotate-diff.sh /tmp/pr-raw.diff > /tmp/pr.diff
 
+      - name: Gather repo guidelines
+        run: |
+          echo "" > /tmp/repo-guidelines.md
+          for f in AGENTS.md CLAUDE.md .kiro/agents/*.md .kiro/steering/*.md; do
+            if [ -f "$f" ]; then
+              echo "--- ${f} ---" >> /tmp/repo-guidelines.md
+              cat "$f" >> /tmp/repo-guidelines.md
+              echo "" >> /tmp/repo-guidelines.md
+            fi
+          done
+          if [ ! -s /tmp/repo-guidelines.md ]; then
+            echo "No repo guidelines found." > /tmp/repo-guidelines.md
+          fi
+
       - name: Fetch issue context
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
@@ -71,7 +85,7 @@ jobs:
           kiro-cli chat \
             --no-interactive \
             --agent code-reviewer \
-            --trust-tools=read,write,grep,subagent \
+            --trust-tools=read,write,grep,shell,subagent \
             "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR

@@ -58,6 +58,7 @@ Write valid JSON to `/tmp/kiro-review.json`:
   "comments": [
     {
       "path": "relative/path/to/file.ext",
+      "line": 42,
       "severity": "critical|important|minor",
       "body": "🔒 Finding description and suggestion"
     }

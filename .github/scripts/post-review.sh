@@ -1,35 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Posts or updates a single Kiro code review comment on the PR.
-# Uses a hidden marker to find and edit the existing comment on subsequent reviews.
+# Posts a PR review with inline comments via the GitHub reviews API.
+# Summary goes in the review body, findings become inline comments on specific lines.
 # Expects: PR_NUMBER, GITHUB_REPOSITORY, GH_TOKEN (set by the workflow)
 
 REVIEW_FILE="/tmp/kiro-review.json"
-COMMENT_FILE="/tmp/kiro-comment.md"
 PR="$PR_NUMBER"
-MARKER="<!-- kiro-code-review -->"
 
-# Find existing review comment
-COMMENT_ID=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate -q \
-  ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -1)
-
-post_comment() {
-  if [[ -n "${COMMENT_ID:-}" ]]; then
-    echo "Updating existing review comment (${COMMENT_ID})"
-    gh api "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}" \
-      -X PATCH -F "body=@${COMMENT_FILE}"
-  else
-    echo "Creating new review comment"
-    gh pr comment "$PR" --body-file "$COMMENT_FILE"
-  fi
-}
-
-# If no findings file, post a clean summary
+# If no findings file, post a clean review
 if [[ ! -f "$REVIEW_FILE" ]]; then
   echo "No review file found — posting clean summary"
-  printf '%s\n%s' "$MARKER" "✅ **Kiro Code Review** — No issues found." > "$COMMENT_FILE"
-  post_comment
+  gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
+    -f body="✅ **Kiro Code Review** — No issues found." \
+    -f event="COMMENT"
   exit 0
 fi
 
@@ -44,36 +28,53 @@ fi
 
 FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 
-# Build the entire comment via jq to avoid shell expansion of user content
-jq -r --arg marker "$MARKER" '
-  def severity_section(sev; heading):
-    [.comments[] | select(.severity == sev)]
-    | if length > 0 then
-        "### " + heading + "\n" +
-        (group_by(.path)[] | "**\(.[0].path)**\n" + (map("- \(.body)") | join("\n"))) +
-        "\n"
-      else "" end;
-
+# Build review body (summary + strengths + verdict)
+BODY=$(jq -r '
   def verdict_emoji:
     if .verdict == "merge" then "✅"
     elif .verdict == "merge with fixes" then "⚠️"
     elif .verdict == "needs rework" then "🛑"
     else "❓" end;
 
-  $marker + "\n" +
   "🤖 **Kiro Code Review**\n\n" +
   (.summary // "No summary provided.") + "\n\n" +
   (if .strengths and (.strengths | length) > 0
     then "### Strengths\n" + (.strengths | map("- \(.)") | join("\n")) + "\n\n"
     else "" end) +
-  severity_section("critical"; "Critical (Must Fix)") +
-  severity_section("important"; "Important (Should Fix)") +
-  severity_section("minor"; "Minor (Nice to Have)") +
-  "\n" + verdict_emoji + " **Verdict: " + (.verdict // "no verdict") + "**" +
+  verdict_emoji + " **Verdict: " + (.verdict // "no verdict") + "**" +
   (if .verdict_reason and .verdict_reason != "" then " — " + .verdict_reason else "" end) +
   "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
-' "$REVIEW_FILE" > "$COMMENT_FILE"
+' "$REVIEW_FILE")
 
-post_comment
+if [[ "$FINDING_COUNT" -eq 0 ]]; then
+  gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
+    -f body="$BODY" \
+    -f event="COMMENT"
+else
+  # Build payload with inline comments
+  PAYLOAD=$(jq -n \
+    --arg body "$BODY" \
+    --slurpfile review "$REVIEW_FILE" \
+    '{
+      body: $body,
+      event: "COMMENT",
+      comments: [
+        $review[0].comments[] |
+        {
+          path: .path,
+          line: .line,
+          side: "RIGHT",
+          body: (
+            (if .severity == "critical" then "**Critical** — "
+             elif .severity == "important" then "**Important** — "
+             else "" end) +
+            .body
+          )
+        }
+      ]
+    }')
 
-echo "Review posted successfully (${FINDING_COUNT} findings)"
+  echo "$PAYLOAD" | gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" --input -
+fi
+
+echo "Review posted successfully (${FINDING_COUNT} inline comments)"

@@ -27,7 +27,9 @@ jobs:
         run: curl -fsSL https://cli.kiro.dev/install | bash
 
       - name: Generate PR diff
-        run: gh pr diff "$PR_NUMBER" > /tmp/pr.diff
+        run: |
+          gh pr diff "$PR_NUMBER" > /tmp/pr-raw.diff
+          bash .github/scripts/annotate-diff.sh /tmp/pr-raw.diff > /tmp/pr.diff
 
       - name: Fetch issue context
         run: |

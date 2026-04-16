@@ -30,18 +30,18 @@ FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 
 # Build review body (summary + strengths + verdict)
 BODY=$(jq -r '
-  def verdict_emoji:
-    if .verdict == "merge" then "✅"
-    elif .verdict == "merge with fixes" then "⚠️"
-    elif .verdict == "needs rework" then "🛑"
-    else "❓" end;
+  def verdict_label:
+    if .verdict == "merge" then "✅ Merge"
+    elif .verdict == "merge with fixes" then "Merge with fixes"
+    elif .verdict == "needs rework" then "Needs rework"
+    else "No verdict" end;
 
   "🤖 **Kiro Code Review**\n\n" +
   (.summary // "No summary provided.") + "\n\n" +
   (if .strengths and (.strengths | length) > 0
     then "### Strengths\n" + (.strengths | map("- \(.)") | join("\n")) + "\n\n"
     else "" end) +
-  verdict_emoji + " **Verdict: " + (.verdict // "no verdict") + "**" +
+  "**Verdict: " + verdict_label + "**" +
   (if .verdict_reason and .verdict_reason != "" then " — " + .verdict_reason else "" end) +
   "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
 ' "$REVIEW_FILE")
@@ -65,8 +65,9 @@ else
           line: .line,
           side: "RIGHT",
           body: (
-            (if .severity == "critical" then "**Critical** — "
-             elif .severity == "important" then "**Important** — "
+            (if .severity == "high" then "**[high]** "
+             elif .severity == "medium" then "**[medium]** "
+             elif .severity == "low" then "**[low]** "
              else "" end) +
             .body
           )

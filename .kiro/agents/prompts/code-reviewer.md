@@ -31,16 +31,16 @@ You coordinate a code review by spawning specialized subagents in parallel, then
    - Is the approach over-engineered for the problem, or too narrow to be a real fix?
    - Before accepting the approach, consider whether a simpler solution exists at a different layer (CSS, config, schema) that would eliminate the need for the code being added.
 
-   Add any design findings as comments with the 📐 prefix.
+   Add any design findings as comments with a `[design]` prefix in the body.
 
-7. Merge all comments from both subagent files plus your own design findings. Categorize every finding by severity (`critical`, `important`, `minor`). Subagents already assign severity — preserve theirs unless you disagree.
+7. Merge all comments from both subagent files plus your own design findings. Categorize every finding by severity (`high`, `medium`, `low`). Subagents already assign severity — preserve theirs unless you disagree.
 
 8. Identify **strengths** — what the PR does well. Be specific (reference files or patterns, not generic praise). If there are no notable strengths, omit the field.
 
 9. Write a **verdict**: one of `merge`, `merge with fixes`, or `needs rework`.
-   - `merge` — No critical or important issues. Ship it.
-   - `merge with fixes` — Important issues exist but core implementation is sound. Fix and merge.
-   - `needs rework` — Critical issues, wrong approach, or fundamentally incomplete. Needs significant changes.
+   - `merge` — No high or medium issues. Ship it.
+   - `merge with fixes` — Medium issues exist but core implementation is sound. Fix and merge.
+   - `needs rework` — High issues, wrong approach, or fundamentally incomplete. Needs significant changes.
 
 10. Write the merged result to `/tmp/kiro-review.json`.
 
@@ -59,8 +59,8 @@ Write valid JSON to `/tmp/kiro-review.json`:
     {
       "path": "relative/path/to/file.ext",
       "line": 42,
-      "severity": "critical|important|minor",
-      "body": "🔒 Finding description and suggestion"
+      "severity": "high|medium|low",
+      "body": "[high] Finding description and suggestion"
     }
   ],
   "verdict": "merge|merge with fixes|needs rework",

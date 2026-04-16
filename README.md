@@ -157,9 +157,34 @@ Edit the `model` field in any agent's `.json` config:
 
 The coordinator uses `claude-opus-4.6` by default; subagents use `claude-sonnet-4.6`.
 
+### When the review runs
+
+By default, the review runs **once when a PR is opened**. Subsequent pushes don't trigger a re-review — you re-run manually when you're ready.
+
+To change this behavior, edit the `types` array in `.github/workflows/kiro-code-review.yml`:
+
+```yaml
+# Default: review on first commit only (manual re-run for subsequent pushes)
+on:
+  pull_request:
+    types: [opened]
+
+# Review on every push (more thorough, higher cost)
+on:
+  pull_request:
+    types: [opened, synchronize]
+```
+
+| Mode | Trigger | Cost | Best for |
+|------|---------|------|----------|
+| `[opened]` (default) | First commit only | Low — one review per PR | Teams that iterate quickly and re-run manually |
+| `[opened, synchronize]` | Every push | Higher — review per push | Teams that want continuous automated feedback |
+
+Both modes support manual re-runs via workflow_dispatch.
+
 ### Re-running a review
 
-The review runs once when a PR is opened. To re-run:
+To manually re-run a review on any PR:
 
 1. Go to **Actions** → **Kiro Code Review** → **Run workflow**
 2. Enter the PR number and click **Run workflow**

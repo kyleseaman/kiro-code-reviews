@@ -68,7 +68,8 @@ jobs:
           AUGMENT_API_KEY: ${{ secrets.AUGMENT_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
         run: |
-          kiro-cli settings mcp.noInteractiveTimeout 5000
+          mkdir -p ~/.kiro/settings
+          echo '{"mcp":{"noInteractiveTimeout":5000}}' > ~/.kiro/settings/cli.json
 
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"

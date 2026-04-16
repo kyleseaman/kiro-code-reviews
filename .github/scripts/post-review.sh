@@ -31,9 +31,10 @@ FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 # Build review body (summary + strengths + verdict)
 BODY=$(jq -r '
   def verdict_label:
-    if .verdict == "merge" then "✅ Merge"
-    elif .verdict == "merge with fixes" then "Merge with fixes"
-    elif .verdict == "needs rework" then "Needs rework"
+    (.verdict // "no verdict") | ascii_downcase |
+    if . == "merge" then "✅ Merge"
+    elif . == "merge with fixes" then "Merge with fixes"
+    elif . == "needs rework" then "Needs rework"
     else "No verdict" end;
 
   "🤖 **Kiro Code Review**\n\n" +

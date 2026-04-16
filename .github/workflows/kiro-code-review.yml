@@ -42,7 +42,7 @@ jobs:
 
       - name: Gather repo guidelines
         run: |
-          echo "" > /tmp/repo-guidelines.md
+          > /tmp/repo-guidelines.md
           for f in AGENTS.md CLAUDE.md .kiro/agents/*.md .kiro/steering/*.md; do
             if [ -f "$f" ]; then
               echo "--- ${f} ---" >> /tmp/repo-guidelines.md

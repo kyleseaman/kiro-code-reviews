@@ -12,7 +12,10 @@ You coordinate a code review by spawning specialized subagents in parallel, then
    - `code-security` agent with prompt: "Review the diff at /tmp/pr.diff for security vulnerabilities. The linked issue context is at /tmp/issue-context.md. Write findings to /tmp/kiro-security.json"
    - `code-quality` agent with prompt: "Review the diff at /tmp/pr.diff for bugs, code quality issues, and test coverage. The linked issue context is at /tmp/issue-context.md. Write findings to /tmp/kiro-quality.json"
 
-4. Wait for both subagents to complete.
+4. While subagents run, build codebase context for your design review:
+   - Read the **full source files** that the diff modifies (not just the diff hunks) to understand the surrounding code.
+   - List the directory of each changed file to identify sibling files. If the issue describes a cross-cutting problem (e.g., "throughout the app", "all components"), check whether sibling or related files have the same issue that the PR doesn't address.
+   - If the PR adds runtime code (JS/TS) to solve what looks like a layout, styling, or configuration problem, read the relevant CSS/config/schema files to check whether a simpler solution exists at that layer.
 
 5. Read `/tmp/kiro-security.json` and `/tmp/kiro-quality.json`.
 
@@ -21,6 +24,7 @@ You coordinate a code review by spawning specialized subagents in parallel, then
    - Is the fix at the right abstraction layer? (e.g., CSS problem solved with CSS, not JS; config problem solved with config, not code)
    - If the diff modifies a shared/reusable component, are there sibling components with the same issue that were missed?
    - Is the approach over-engineered for the problem, or too narrow to be a real fix?
+   - Before accepting the approach, consider whether a simpler solution exists at a different layer (CSS, config, schema) that would eliminate the need for the code being added.
 
    Add any design findings as comments with the 🟣 prefix.
 

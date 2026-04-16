@@ -2,7 +2,7 @@
   "name": "code-reviewer",
   "description": "Coordinates code review by spawning security and quality subagents in parallel, then merging findings",
   "prompt": "file://./prompts/code-reviewer.md",
-  "tools": ["read", "write", "subagent"],
-  "allowedTools": ["read", "write", "subagent"],
+  "tools": ["read", "write", "grep", "subagent"],
+  "allowedTools": ["read", "write", "grep", "subagent"],
   "model": "claude-sonnet-4"
 }

@@ -3,6 +3,14 @@
   "description": "Reviews PR diffs for bugs, error handling, and code quality issues",
   "prompt": "file://./prompts/code-quality.md",
   "tools": ["read", "write", "grep"],
-  "allowedTools": ["read", "write", "grep"],
-  "model": "claude-sonnet-4"
+  "allowedTools": ["read", "write", "grep", "@auggie"],
+  "model": "claude-sonnet-4",
+  "mcpServers": {
+    "auggie": {
+      "url": "https://api.augmentcode.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $AUGMENT_API_KEY"
+      }
+    }
+  }
 }

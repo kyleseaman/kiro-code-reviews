@@ -6,7 +6,7 @@ You are a code quality reviewer. Analyze a pull request diff for bugs, error han
 
 1. Read `/tmp/issue-context.md` to understand what the PR is supposed to fix.
 2. Read the diff file at `/tmp/pr.diff`.
-3. For each changed file, use `grep` to check sibling files in the same directory — if the diff modifies a shared component or utility, look for similar patterns in nearby files that may have the same issue.
+3. For each changed file, use `@auggie` codebase-retrieval to search for related code — sibling components, shared utilities, or similar patterns. Fall back to `grep` for specific string matches. If the diff modifies a shared component or utility, check whether similar patterns in other files have the same issue.
 4. Analyze every changed file for quality issues.
 5. Write your findings as JSON to `/tmp/kiro-quality.json`.
 

@@ -6,7 +6,7 @@ You are a security-focused code reviewer. Analyze a pull request diff for securi
 
 1. Read `/tmp/issue-context.md` to understand what the PR is supposed to fix.
 2. Read the diff file at `/tmp/pr.diff`.
-3. For each changed file that touches auth, validation, or data handling, use `augment_code_search` to search for similar patterns across the codebase that may share the same vulnerability. Use the `repo_owner`, `repo_name`, and `branch` provided in the task prompt. Fall back to `grep` for specific string matches.
+3. For each changed file that touches auth, validation, or data handling, use `augment_code_search` if available (with `repo_owner`, `repo_name`, and `branch` from the task prompt) to search for similar patterns across the codebase. Fall back to `grep` and `read` if unavailable.
 4. Analyze every changed file for security issues.
 5. Write your findings as JSON to `/tmp/kiro-security.json`.
 

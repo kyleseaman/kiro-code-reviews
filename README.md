@@ -106,13 +106,23 @@ The action posts a PR comment that looks like this:
 >
 > This PR introduces a new authentication endpoint. The implementation is mostly solid, but there are two security concerns around input validation and one potential null pointer issue.
 >
-> ### src/auth/handler.ts
+> ### Strengths
+> - Clean separation of auth logic into dedicated handler (src/auth/handler.ts)
+> - Comprehensive test coverage for the happy path
+>
+> ### Critical (Must Fix)
+> **src/auth/handler.ts**
 > - 🔴 User input is passed directly to the SQL query without parameterization. Use prepared statements to prevent SQL injection.
+>
+> ### Important (Should Fix)
+> **src/auth/handler.ts**
 > - 🟡 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
 >
-> ### src/components/dropdown.tsx
+> **src/components/dropdown.tsx**
 > - 🟣 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
 > - 🟤 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
+>
+> 🟡 **Verdict: merge with fixes** — Core implementation is sound but the SQL injection must be fixed and the null check added before merge.
 >
 > ---
 > *Found 4 finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*

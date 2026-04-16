@@ -31,9 +31,16 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 
    Add any design findings as comments with the 🟣 prefix.
 
-7. Merge all comments from both subagent files plus your own design findings. Write a brief summary paragraph covering the overall review, including whether the PR fully addresses the linked issue.
+7. Merge all comments from both subagent files plus your own design findings. Categorize every finding by severity (`critical`, `important`, `minor`). Subagents already assign severity — preserve theirs unless you disagree.
 
-8. Write the merged result to `/tmp/kiro-review.json`.
+8. Identify **strengths** — what the PR does well. Be specific (reference files or patterns, not generic praise). If there are no notable strengths, omit the field.
+
+9. Write a **verdict**: one of `merge`, `merge with fixes`, or `needs rework`.
+   - `merge` — No critical or important issues. Ship it.
+   - `merge with fixes` — Important issues exist but core implementation is sound. Fix and merge.
+   - `needs rework` — Critical issues, wrong approach, or fundamentally incomplete. Needs significant changes.
+
+10. Write the merged result to `/tmp/kiro-review.json`.
 
 ## Output Format
 
@@ -42,12 +49,19 @@ Write valid JSON to `/tmp/kiro-review.json`:
 ```json
 {
   "summary": "One-paragraph summary of the overall review, including whether the PR addresses the linked issue",
+  "strengths": [
+    "Clean database schema with proper migrations (db.ts:15-42)",
+    "Comprehensive test coverage for edge cases"
+  ],
   "comments": [
     {
       "path": "relative/path/to/file.ext",
+      "severity": "critical|important|minor",
       "body": "🔴 Finding description and suggestion"
     }
-  ]
+  ],
+  "verdict": "merge|merge with fixes|needs rework",
+  "verdict_reason": "One-sentence technical justification for the verdict"
 }
 ```
 

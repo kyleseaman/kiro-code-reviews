@@ -22,21 +22,42 @@ fi
 
 FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 SUMMARY=$(jq -r '.summary // "No summary provided."' "$REVIEW_FILE")
+VERDICT=$(jq -r '.verdict // "no verdict"' "$REVIEW_FILE")
+VERDICT_REASON=$(jq -r '.verdict_reason // ""' "$REVIEW_FILE")
 
-# Build findings list grouped by file
-FINDINGS=""
-if [[ "$FINDING_COUNT" -gt 0 ]]; then
-  FINDINGS=$(jq -r '.comments | group_by(.path)[] | "### \(.[0].path)\n" + (map("- \(.body)") | join("\n")) + "\n"' "$REVIEW_FILE")
+# Verdict emoji
+case "$VERDICT" in
+  "merge") VERDICT_EMOJI="✅" ;;
+  "merge with fixes") VERDICT_EMOJI="🟡" ;;
+  "needs rework") VERDICT_EMOJI="🔴" ;;
+  *) VERDICT_EMOJI="❓" ;;
+esac
+
+# Build strengths section
+STRENGTHS=$(jq -r 'if .strengths and (.strengths | length) > 0 then "### Strengths\n" + (.strengths | map("- \(.)") | join("\n")) + "\n" else "" end' "$REVIEW_FILE")
+
+# Build findings grouped by severity
+CRITICAL=$(jq -r '[.comments[] | select(.severity == "critical")] | if length > 0 then "### Critical (Must Fix)\n" + (group_by(.path)[] | "**\(.[0].path)**\n" + (map("- \(.body)") | join("\n"))) + "\n" else "" end' "$REVIEW_FILE")
+IMPORTANT=$(jq -r '[.comments[] | select(.severity == "important")] | if length > 0 then "### Important (Should Fix)\n" + (group_by(.path)[] | "**\(.[0].path)**\n" + (map("- \(.body)") | join("\n"))) + "\n" else "" end' "$REVIEW_FILE")
+MINOR=$(jq -r '[.comments[] | select(.severity == "minor")] | if length > 0 then "### Minor (Nice to Have)\n" + (group_by(.path)[] | "**\(.[0].path)**\n" + (map("- \(.body)") | join("\n"))) + "\n" else "" end' "$REVIEW_FILE")
+
+# Build verdict section
+VERDICT_SECTION="${VERDICT_EMOJI} **Verdict: ${VERDICT}**"
+if [[ -n "$VERDICT_REASON" ]]; then
+  VERDICT_SECTION="${VERDICT_SECTION} — ${VERDICT_REASON}"
 fi
 
 BODY="🤖 **Kiro Code Review**
 
 ${SUMMARY}
 
-${FINDINGS}
+${STRENGTHS}
+${CRITICAL}${IMPORTANT}${MINOR}
+${VERDICT_SECTION}
+
 ---
 *Found ${FINDING_COUNT} finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
 
 gh pr comment "$PR" --body "$BODY"
 
-echo "Review posted successfully (${FINDING_COUNT} findings)"
+echo "Review posted successfully (${FINDING_COUNT} findings, verdict: ${VERDICT})"

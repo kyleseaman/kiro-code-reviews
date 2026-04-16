@@ -75,11 +75,11 @@ else
     # Build fallback body with findings listed as text
     FALLBACK_BODY=$(jq -r --arg body "$BODY" '
       $body + "\n\n### Findings\n" +
-      ([.comments[] | "**\(.path)** — **[" + (.severity // "low") + "]** " + .body + " _(confidence: " + ((.confidence // 0) | tostring) + ")_"] | join("\n\n"))
+      ([.comments // [] | .[] | "**\(.path)** — **[" + (.severity // "low") + "]** " + .body + " _(confidence: " + ((.confidence // 0) | tostring) + ")_"] | join("\n\n"))
     ' "$REVIEW_FILE")
     gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
       -f body="$FALLBACK_BODY" \
-      -f event="COMMENT"
+      -f event="COMMENT" || echo "::error::Fallback review post also failed"
     echo "Review posted as body-only fallback (${FINDING_COUNT} findings)"
   }
 fi

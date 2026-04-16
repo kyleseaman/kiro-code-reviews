@@ -65,6 +65,7 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         env:
           KIRO_API_KEY: ${{ secrets.KIRO_API_KEY }}
+          AUGMENT_API_KEY: ${{ secrets.AUGMENT_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
         run: |
           kiro-cli chat \

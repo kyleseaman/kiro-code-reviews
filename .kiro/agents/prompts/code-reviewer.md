@@ -9,8 +9,8 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 2. Read `/tmp/pr.diff` to get a high-level understanding of what files are changed and the scope of the PR.
 
 3. Spawn two subagents **in parallel** using the `subagent` tool:
-   - `code-security` agent with prompt: "Review the diff at /tmp/pr.diff for security vulnerabilities. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search. Write findings to /tmp/kiro-security.json"
-   - `code-quality` agent with prompt: "Review the diff at /tmp/pr.diff for bugs, code quality issues, and test coverage. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search. Write findings to /tmp/kiro-quality.json"
+   - `code-security` agent with prompt: "Review the diff at /tmp/pr.diff for security vulnerabilities. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search if available, otherwise use grep and read. Write findings to /tmp/kiro-security.json"
+   - `code-quality` agent with prompt: "Review the diff at /tmp/pr.diff for bugs, code quality issues, and test coverage. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search if available, otherwise use grep and read. Write findings to /tmp/kiro-quality.json"
 
    Replace `{repo_owner}`, `{repo_name}`, and `{branch}` with the values from the task prompt.
 

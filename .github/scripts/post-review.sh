@@ -64,7 +64,7 @@ else
           path: .path,
           line: .line,
           side: "RIGHT",
-          body: ("**[" + .severity + "]** " + .body + " _(confidence: " + (.confidence | tostring) + ")_")
+          body: ("**[" + (.severity // "low") + "]** " + .body + " _(confidence: " + ((.confidence // 0) | tostring) + ")_")
         }
       ]
     }')

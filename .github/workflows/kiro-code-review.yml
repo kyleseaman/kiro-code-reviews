@@ -80,7 +80,7 @@ jobs:
         run: |
           REPO_OWNER="${{ github.repository_owner }}"
           REPO_NAME="${{ github.event.repository.name }}"
-          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+          PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
 
           kiro-cli chat \
             --no-interactive \

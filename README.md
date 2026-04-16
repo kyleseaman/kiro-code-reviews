@@ -175,29 +175,11 @@ Push a new commit — the review is SHA-scoped, so each new push gets a fresh re
 
 ### Adding an MCP server for semantic code search
 
-For deeper codebase awareness, you can add an MCP server like [Augment](https://www.augmentcode.com/) to the agent configs. This gives agents semantic code search instead of just `grep`.
+[Augment](https://www.augmentcode.com/) semantic code search is pre-configured but disabled by default. To enable it:
 
-1. Add the MCP server to each agent's `.json` config:
-
-```json
-{
-  "mcpServers": {
-    "auggie": {
-      "url": "https://api.augmentcode.com/mcp",
-      "headers": {
-        "Authorization": "Bearer $AUGMENT_API_KEY"
-      },
-      "timeout": 5000
-    }
-  }
-}
-```
-
-2. Add `"@auggie"` to each agent's `allowedTools` array.
-
-3. Add `AUGMENT_API_KEY` to your repo secrets and to the workflow env.
-
-4. Update the prompts to use `augment_code_search` (with `repo_owner`, `repo_name`, `branch` params) as the primary search tool, with `grep` as fallback.
+1. Add `AUGMENT_API_KEY` to your repo secrets (Settings → Secrets → Actions).
+2. Add `AUGMENT_API_KEY: ${{ secrets.AUGMENT_API_KEY }}` to the workflow env block.
+3. Set `"disabled": false` in the `auggie` MCP config in all three agent JSON files.
 
 ---
 

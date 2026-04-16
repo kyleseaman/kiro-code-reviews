@@ -60,7 +60,7 @@ Write valid JSON to `/tmp/kiro-review.json`:
       "path": "relative/path/to/file.ext",
       "line": 42,
       "severity": "high|medium|low",
-      "body": "[high] Finding description and suggestion"
+      "body": "Finding description and suggestion"
     }
   ],
   "verdict": "merge|merge with fixes|needs rework",

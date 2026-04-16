@@ -64,13 +64,7 @@ else
           path: .path,
           line: .line,
           side: "RIGHT",
-          body: (
-            (if .severity == "high" then "**[high]** "
-             elif .severity == "medium" then "**[medium]** "
-             elif .severity == "low" then "**[low]** "
-             else "" end) +
-            .body
-          )
+          body: ("**[" + .severity + "]** " + .body)
         }
       ]
     }')

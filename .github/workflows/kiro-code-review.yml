@@ -43,7 +43,7 @@ jobs:
       - name: Gather repo guidelines
         run: |
           > /tmp/repo-guidelines.md
-          for f in AGENTS.md CLAUDE.md .kiro/agents/*.md .kiro/steering/*.md; do
+          for f in AGENTS.md CLAUDE.md .kiro/steering/*.md; do
             if [ -f "$f" ]; then
               echo "--- ${f} ---" >> /tmp/repo-guidelines.md
               cat "$f" >> /tmp/repo-guidelines.md
@@ -58,7 +58,7 @@ jobs:
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
           gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
-          ISSUE_NUMS=$(grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' /tmp/pr-body.txt | sed 's/.*#//' || true)
+          ISSUE_NUMS=$(grep -oiP '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\K[0-9]+' /tmp/pr-body.txt || true)
 
           if [ -n "$ISSUE_NUMS" ]; then
             echo "Linked issues found: $ISSUE_NUMS"

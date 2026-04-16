@@ -18,7 +18,7 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 
 4. While subagents run, build codebase context for your design review:
    - Read the **full source files** that the diff modifies (not just the diff hunks) to understand the surrounding code.
-   - Use `grep` to search for related patterns across the codebase.
+   - Use `grep` to search for related patterns across the codebase. If `augment_code_search` is available, prefer it for semantic search (pass `repo_owner`, `repo_name`, and `branch` from the task prompt).
    - List the directory of each changed file to identify sibling files. If the issue describes a cross-cutting problem (e.g., "throughout the app", "all components"), check whether sibling or related files have the same issue that the PR doesn't address.
    - If the PR adds runtime code (JS/TS) to solve what looks like a layout, styling, or configuration problem, read the relevant CSS/config/schema files to check whether a simpler solution exists at that layer.
 

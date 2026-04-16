@@ -38,8 +38,6 @@ Write valid JSON to `/tmp/kiro-review.json`:
   "comments": [
     {
       "path": "relative/path/to/file.ext",
-      "line": 42,
-      "side": "RIGHT",
       "body": "🔴 Finding description and suggestion"
     }
   ]
@@ -50,6 +48,5 @@ Write valid JSON to `/tmp/kiro-review.json`:
 
 - Read the issue context FIRST — it frames the entire review.
 - Do NOT duplicate findings already raised by subagents.
-- Design findings should target the most relevant file/line in the diff, or use line 1 of the primary changed file for general observations.
 - If a subagent's output file is missing or invalid, skip it and note the failure in the summary.
 - If all reviewers return empty comments, write the JSON with an empty `comments` array and a summary saying no issues were found.

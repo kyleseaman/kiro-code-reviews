@@ -53,7 +53,7 @@ flowchart LR
 | 🧩 **Parallel subagents** | Security and quality reviews run simultaneously via Kiro subagents |
 | 🔗 **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
 | 🔍 **Codebase-aware** | Agents grep sibling files to catch patterns missed in the diff |
-| 💬 **Inline comments** | Findings posted on the exact lines in the PR diff |
+| 💬 **PR comment** | Findings posted as a single organized comment on the PR |
 | 📝 **Summary** | Overall review summary posted as the review body |
 | 🔄 **Per-commit review** | SHA-scoped markers — new pushes get fresh reviews |
 
@@ -100,24 +100,22 @@ That's it. The workflow triggers automatically on new PRs and posts a review.
 
 ## Example Output
 
-The action posts a PR review that looks like this:
+The action posts a PR comment that looks like this:
 
-**Review summary** (on the review body):
 > 🤖 **Kiro Code Review**
 >
 > This PR introduces a new authentication endpoint. The implementation is mostly solid, but there are two security concerns around input validation and one potential null pointer issue.
 >
+> ### src/auth/handler.ts
+> - 🔴 User input is passed directly to the SQL query without parameterization. Use prepared statements to prevent SQL injection.
+> - 🟡 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
+>
+> ### src/components/dropdown.tsx
+> - 🟣 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
+> - 🟤 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
+>
 > ---
-> *Found 3 finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*
-
-**Inline comments** (on specific lines):
-> 🔴 User input is passed directly to the SQL query without parameterization. Use prepared statements to prevent SQL injection.
-
-> 🟡 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
-
-> 🟣 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
-
-> 🟤 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
+> *Found 4 finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*
 
 ---
 
@@ -183,7 +181,7 @@ Push a new commit — the review is SHA-scoped, so each new push gets a fresh re
 │     ├── performs design review                    │
 │     └── merges → /tmp/kiro-review.json            │
 │                                                   │
-│  6. post-review.sh → gh api (PR review)           │
+│  6. post-review.sh → gh pr comment               │
 │  7. Post SHA-scoped marker comment                │
 └──────────────────────────────────────────────────┘
 ```
@@ -197,7 +195,7 @@ The coordinator agent reads the linked issue context first, then delegates line-
 ```
 .github/
 ├── scripts/
-│   └── post-review.sh              # Reads findings JSON, posts PR review via gh api
+│   └── post-review.sh              # Reads findings JSON, posts PR comment via gh
 └── workflows/
     └── kiro-code-review.yml        # GitHub Actions workflow
 
@@ -223,7 +221,6 @@ The coordinator agent reads the linked issue context first, then delegates line-
 | No review posted | Check the workflow logs — the agent may not have found issues |
 | Review posted on every push | The SHA-scoped marker check may have failed — look for `<!-- kiro-review-{SHA} -->` in PR comments |
 | No issue context | Ensure the PR body contains `Closes #N`, `Fixes #N`, or `Resolves #N` linking to an issue |
-| Inline comments on wrong lines | The agent parses line numbers from diff hunk headers — complex rebases can cause drift |
 
 ---
 

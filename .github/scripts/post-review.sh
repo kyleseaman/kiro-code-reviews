@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
+# ABOUTME: Posts AI-generated code review findings as inline comments via GitHub API.
+# ABOUTME: Handles summary formatting, verdict labeling, and payload construction.
 set -euo pipefail
-
-# Posts a PR review with inline comments via the GitHub reviews API.
-# Summary goes in the review body, findings become inline comments on specific lines.
-# Expects: PR_NUMBER, GITHUB_REPOSITORY, GH_TOKEN (set by the workflow)
 
 REVIEW_FILE="/tmp/kiro-review.json"
 PR="$PR_NUMBER"
@@ -26,7 +24,7 @@ if ! jq empty "$REVIEW_FILE" 2>/dev/null; then
   exit 1
 fi
 
-FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
+FINDING_COUNT=$(jq '.comments // [] | length' "$REVIEW_FILE")
 
 # Build review body (summary + strengths + verdict)
 BODY=$(jq -r '
@@ -44,7 +42,7 @@ BODY=$(jq -r '
     else "" end) +
   "**Verdict: " + verdict_label + "**" +
   (if .verdict_reason and .verdict_reason != "" then " — " + .verdict_reason else "" end) +
-  "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).* · To re-run, go to Actions → Kiro Code Review → Run workflow."
+  "\n\n---\n*Found \(.comments // [] | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).* · To re-run, go to Actions → Kiro Code Review → Run workflow."
 ' "$REVIEW_FILE")
 
 if [[ "$FINDING_COUNT" -eq 0 ]]; then
@@ -70,7 +68,18 @@ else
       ]
     }')
 
-  echo "$PAYLOAD" | gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" --input -
+  echo "$PAYLOAD" | gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" --input - 2>/tmp/kiro-post-err && {
+    echo "Review posted successfully (${FINDING_COUNT} inline comments)"
+  } || {
+    echo "::warning::Inline comments failed ($(cat /tmp/kiro-post-err)). Posting as body-only review."
+    # Build fallback body with findings listed as text
+    FALLBACK_BODY=$(jq -r --arg body "$BODY" '
+      $body + "\n\n### Findings\n" +
+      ([.comments // [] | .[] | "**\(.path)** — **[" + (.severity // "low") + "]** " + .body + " _(confidence: " + ((.confidence // 0) | tostring) + ")_"] | join("\n\n"))
+    ' "$REVIEW_FILE")
+    gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
+      -f body="$FALLBACK_BODY" \
+      -f event="COMMENT" || echo "::error::Fallback review post also failed"
+    echo "Review posted as body-only fallback (${FINDING_COUNT} findings)"
+  }
 fi
-
-echo "Review posted successfully (${FINDING_COUNT} inline comments)"

@@ -31,7 +31,7 @@ You coordinate a code review by spawning specialized subagents in parallel, then
    - Is the approach over-engineered for the problem, or too narrow to be a real fix?
    - Before accepting the approach, consider whether a simpler solution exists at a different layer (CSS, config, schema) that would eliminate the need for the code being added.
 
-   Add any design findings as comments with the 🟣 prefix.
+   Add any design findings as comments with the 📐 prefix.
 
 7. Merge all comments from both subagent files plus your own design findings. Categorize every finding by severity (`critical`, `important`, `minor`). Subagents already assign severity — preserve theirs unless you disagree.
 
@@ -59,7 +59,7 @@ Write valid JSON to `/tmp/kiro-review.json`:
     {
       "path": "relative/path/to/file.ext",
       "severity": "critical|important|minor",
-      "body": "🔴 Finding description and suggestion"
+      "body": "🔒 Finding description and suggestion"
     }
   ],
   "verdict": "merge|merge with fixes|needs rework",

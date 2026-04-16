@@ -45,8 +45,8 @@ jobs:
         if: steps.check.outputs.skip == 'false'
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
-          PR_BODY=$(gh pr view "$PR_NUMBER" --json body -q '.body')
-          ISSUE_NUMS=$(echo "$PR_BODY" | grep -oiE '(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' | grep -oE '[0-9]+' || true)
+          gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
+          ISSUE_NUMS=$(grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' /tmp/pr-body.txt | grep -oE '[0-9]+' || true)
 
           if [ -n "$ISSUE_NUMS" ]; then
             echo "Linked issues found: $ISSUE_NUMS"

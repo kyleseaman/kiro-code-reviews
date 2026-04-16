@@ -44,12 +44,12 @@ flowchart LR
 
 | | |
 |---|---|
-| 🔴 **Security review** | Injection flaws, hardcoded secrets, insecure defaults, missing validation |
-| 🟡 **Bug detection** | Null access, off-by-one errors, race conditions, resource leaks |
-| 🟠 **Error handling** | Swallowed exceptions, missing error checks |
-| 🔵 **Code quality** | Unnecessary complexity, dead code, poor naming |
-| 🟣 **Design review** | Issue completeness, abstraction layer, sibling components, over-engineering |
-| 🟤 **Test coverage** | Missing tests for new behavior, untested exports, stale test updates |
+| 🔒 **Security review** | Injection flaws, hardcoded secrets, insecure defaults, missing validation |
+| 🐛 **Bug detection** | Null access, off-by-one errors, race conditions, resource leaks |
+| ⚠️ **Error handling** | Swallowed exceptions, missing error checks |
+| 🔧 **Code quality** | Unnecessary complexity, dead code, poor naming |
+| 📐 **Design review** | Issue completeness, abstraction layer, sibling components, over-engineering |
+| 🧪 **Test coverage** | Missing tests for new behavior, untested exports, stale test updates |
 | 🧩 **Parallel subagents** | Security and quality reviews run simultaneously via Kiro subagents |
 | 🔗 **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
 | 🔍 **Codebase-aware** | Agents grep sibling files and read full source to catch patterns missed in the diff |
@@ -112,17 +112,17 @@ The action posts a PR comment that looks like this:
 >
 > ### Critical (Must Fix)
 > **src/auth/handler.ts**
-> - 🔴 User input is passed directly to the SQL query without parameterization. Use prepared statements to prevent SQL injection.
+> - 🔒 User input is passed directly to the SQL query without parameterization. Use prepared statements to prevent SQL injection.
 >
 > ### Important (Should Fix)
 > **src/auth/handler.ts**
-> - 🟡 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
+> - 🐛 `user.email` can be `null` when the OAuth provider doesn't return an email. Add a null check before accessing `.toLowerCase()`.
 >
 > **src/components/dropdown.tsx**
-> - 🟣 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
-> - 🟤 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
+> - 📐 The linked issue asks for a central fix across all dropdown components, but this PR only modifies `DropdownItem`. The `Listbox` component has the same wrapping issue — consider addressing both.
+> - 🧪 This PR adds a new exported `wrapBareTextChildren` function but includes no tests for it.
 >
-> 🟡 **Verdict: merge with fixes** — Core implementation is sound but the SQL injection must be fixed and the null check added before merge.
+> ⚠️ **Verdict: merge with fixes** — Core implementation is sound but the SQL injection must be fixed and the null check added before merge.
 >
 > ---
 > *Found 4 finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*

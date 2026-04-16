@@ -4,7 +4,7 @@
   "prompt": "file://./prompts/code-security.md",
   "tools": ["read", "write", "grep"],
   "allowedTools": ["read", "write", "grep", "@auggie"],
-  "model": "claude-sonnet-4",
+  "model": "claude-sonnet-4-6-20250725",
   "mcpServers": {
     "auggie": {
       "url": "https://api.augmentcode.com/mcp",

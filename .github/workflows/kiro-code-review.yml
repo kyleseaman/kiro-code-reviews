@@ -68,11 +68,15 @@ jobs:
           AUGMENT_API_KEY: ${{ secrets.AUGMENT_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
         run: |
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          PR_BRANCH="${{ github.event.pull_request.head.ref }}"
+
           kiro-cli chat \
             --no-interactive \
             --agent code-reviewer \
             --trust-tools=read,write,grep,subagent \
-            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
+            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
         if: steps.check.outputs.skip == 'false'

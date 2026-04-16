@@ -76,6 +76,7 @@ jobs:
             --no-interactive \
             --agent code-reviewer \
             --trust-tools=read,write,grep,subagent \
+            --require-mcp-startup \
             "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR

@@ -43,7 +43,7 @@ BODY=$(jq -r '
     else "" end) +
   "**Verdict: " + verdict_label + "**" +
   (if .verdict_reason and .verdict_reason != "" then " — " + .verdict_reason else "" end) +
-  "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
+  "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).* · To re-run, go to Actions → Kiro Code Review → Run workflow."
 ' "$REVIEW_FILE")
 
 if [[ "$FINDING_COUNT" -eq 0 ]]; then

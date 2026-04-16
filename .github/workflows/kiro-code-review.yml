@@ -2,10 +2,15 @@ name: Kiro Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
 
 concurrency:
-  group: kiro-review-${{ github.event.pull_request.number }}
+  group: kiro-review-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
   cancel-in-progress: true
 
 permissions:
@@ -18,10 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Checkout PR branch (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: gh pr checkout "$PR_NUMBER"
 
       - name: Install Kiro CLI
         run: curl -fsSL https://cli.kiro.dev/install | bash

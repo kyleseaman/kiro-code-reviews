@@ -1,13 +1,16 @@
+# ABOUTME: GitHub Actions workflow for automated AI code review on pull requests.
+# ABOUTME: Spawns Kiro CLI agents to review diffs and post inline findings.
 name: Kiro Code Review
 
 on:
   pull_request:
     types: [opened, ready_for_review]
     paths-ignore:
-      - '**.md'
       - 'docs/**'
       - 'LICENSE'
       - '.gitignore'
+      - 'README.md'
+      - 'CHANGELOG.md'
   workflow_dispatch:
     inputs:
       pr_number:

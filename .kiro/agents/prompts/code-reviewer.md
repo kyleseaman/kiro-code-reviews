@@ -13,7 +13,7 @@ You coordinate a code review by spawning specialized subagents in parallel, then
    Replace `{repo_owner}`, `{repo_name}`, and `{branch}` with the values from the task prompt.
 
    - **Guidelines Agent #1** (`code-guidelines`): "Audit the diff at /tmp/pr.diff against repo guidelines at /tmp/repo-guidelines.md. Issue context is at /tmp/issue-context.md. Write findings to /tmp/kiro-guidelines-1.json"
-   - **Guidelines Agent #2** (`code-guidelines`): "Audit the diff at /tmp/pr.diff against repo guidelines at /tmp/repo-guidelines.md. Issue context is at /tmp/issue-context.md. Write findings to /tmp/kiro-guidelines-2.json"
+   - **Guidelines Agent #2** (`code-guidelines`): Only spawn if `/tmp/repo-guidelines.md` is non-empty. Same prompt but write to `/tmp/kiro-guidelines-2.json`
    - **Bug Detection Agent** (`code-bugs`): "Scan the diff at /tmp/pr.diff for bugs and quality issues. Issue context is at /tmp/issue-context.md. Repo guidelines are at /tmp/repo-guidelines.md. The repo is {repo_owner}/{repo_name} on branch {branch}. Write findings to /tmp/kiro-bugs.json"
    - **History Agent** (`code-history`): "Analyze git history for the files changed in /tmp/pr.diff. Issue context is at /tmp/issue-context.md. Write findings to /tmp/kiro-history.json"
 

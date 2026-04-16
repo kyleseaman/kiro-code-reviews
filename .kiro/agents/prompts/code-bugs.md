@@ -49,3 +49,13 @@ Score each finding 0-100:
 - Every finding MUST describe what breaks. No "consider doing X" without a failure mode.
 - Do NOT flag pre-existing issues not introduced in this PR.
 - Write the JSON file using the `write` tool.
+
+## Do NOT Flag (False Positive Categories)
+
+- Pre-existing issues in unchanged code — if the bug existed before this PR, skip it
+- Code that looks wrong but is intentionally written that way (e.g., lint-ignore comments, explicit type casts)
+- Issues that linters, formatters, or type checkers will catch — those tools run separately
+- Pedantic nitpicks — variable naming preferences, import ordering, comment style
+- General quality suggestions not tied to a concrete bug — "this could be cleaner" is not a finding
+- Test files — do not review test code unless the test itself has a bug that makes it pass incorrectly
+- Generated files, lock files, or vendored dependencies

@@ -3,6 +3,11 @@ name: Kiro Code Review
 on:
   pull_request:
     types: [opened]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -21,6 +26,7 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     env:
       GH_TOKEN: ${{ github.token }}
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}

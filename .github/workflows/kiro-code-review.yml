@@ -28,20 +28,23 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     env:
-      GH_TOKEN: ${{ github.token }}
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout PR branch (manual dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: gh pr checkout "$PR_NUMBER"
-
       - name: Install Kiro CLI
         run: curl -fsSL https://cli.kiro.dev/install | bash
 
+      - name: Checkout PR branch (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr checkout "$PR_NUMBER"
+
       - name: Generate PR diff
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh pr diff "$PR_NUMBER" > /tmp/pr-raw.diff
           bash .github/scripts/annotate-diff.sh /tmp/pr-raw.diff > /tmp/pr.diff
@@ -61,6 +64,8 @@ jobs:
           fi
 
       - name: Fetch issue context
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
           gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
@@ -81,6 +86,7 @@ jobs:
 
       - name: Run Kiro code review
         env:
+          GH_TOKEN: ${{ github.token }}
           KIRO_API_KEY: ${{ secrets.KIRO_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
         run: |
@@ -95,4 +101,6 @@ jobs:
             "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Repo guidelines are at /tmp/repo-guidelines.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 4 review subagents in parallel (2x guidelines, 1x bugs, 1x history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/post-review.sh

@@ -55,4 +55,8 @@ Write valid JSON to `/tmp/kiro-security.json`:
 - Read the `line` number from the `+[N]` annotation in the diff. Do NOT compute line numbers yourself.
 - Do NOT comment on deleted lines, test files, or generated files.
 - Do NOT flag style issues, naming, or complexity — those are not your concern.
+- Every finding MUST state the concrete impact — what can go wrong and how. "Consider validating X" without an exploit scenario is not a finding.
+- CI scripts, GitHub Actions workflows, and shell scripts that process output from trusted tools (git, gh CLI) are low-risk. Do not flag theoretical injection on data from these sources unless you can describe a realistic attack path.
+- Do NOT flag disabled or commented-out configuration as a vulnerability.
+- Fewer high-signal findings are better than many low-signal ones. When in doubt, skip it.
 - Write the JSON file using the `write` tool, not `shell`.

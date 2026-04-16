@@ -52,4 +52,7 @@ Write valid JSON to `/tmp/kiro-quality.json`:
 - Do NOT comment on deleted lines or generated files.
 - Do NOT flag security issues — those are handled by a separate reviewer.
 - Do NOT include findings about style preferences or formatting.
+- Every finding MUST describe what breaks or what goes wrong. "Consider doing X" without a concrete failure mode is not a finding.
+- Do NOT suggest alternative approaches unless the current code has an actual bug or will fail in a realistic scenario.
+- Fewer high-signal findings are better than many low-signal ones. When in doubt, skip it.
 - Write the JSON file using the `write` tool, not `shell`.

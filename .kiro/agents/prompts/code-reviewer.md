@@ -9,16 +9,16 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 2. Read `/tmp/pr.diff` to get a high-level understanding of what files are changed and the scope of the PR.
 
 3. Spawn two subagents **in parallel** using the `subagent` tool:
-   - `code-security` agent with prompt: "Review the diff at /tmp/pr.diff for security vulnerabilities. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search if available, otherwise use grep and read. Write findings to /tmp/kiro-security.json"
-   - `code-quality` agent with prompt: "Review the diff at /tmp/pr.diff for bugs, code quality issues, and test coverage. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch} — use these with augment_code_search if available, otherwise use grep and read. Write findings to /tmp/kiro-quality.json"
+   - `code-security` agent with prompt: "Review the diff at /tmp/pr.diff for security vulnerabilities. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch}. Write findings to /tmp/kiro-security.json"
+   - `code-quality` agent with prompt: "Review the diff at /tmp/pr.diff for bugs, code quality issues, and test coverage. The linked issue context is at /tmp/issue-context.md. The repo is {repo_owner}/{repo_name} on branch {branch}. Write findings to /tmp/kiro-quality.json"
 
    Replace `{repo_owner}`, `{repo_name}`, and `{branch}` with the values from the task prompt.
 
    Before spawning, note: "Spawning subagents — this typically takes 2-4 minutes."
 
 4. While subagents run, build codebase context for your design review:
-   - If `augment_code_search` is available, use it to search for code related to the changed files and the issue description. Pass the `repo_owner`, `repo_name`, and `branch` from the task prompt. If unavailable, fall back to `grep` and `read`.
    - Read the **full source files** that the diff modifies (not just the diff hunks) to understand the surrounding code.
+   - Use `grep` to search for related patterns across the codebase.
    - List the directory of each changed file to identify sibling files. If the issue describes a cross-cutting problem (e.g., "throughout the app", "all components"), check whether sibling or related files have the same issue that the PR doesn't address.
    - If the PR adds runtime code (JS/TS) to solve what looks like a layout, styling, or configuration problem, read the relevant CSS/config/schema files to check whether a simpler solution exists at that layer.
 

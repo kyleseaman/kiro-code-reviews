@@ -52,7 +52,7 @@ flowchart LR
 | 🟤 **Test coverage** | Missing tests for new behavior, untested exports, stale test updates |
 | 🧩 **Parallel subagents** | Security and quality reviews run simultaneously via Kiro subagents |
 | 🔗 **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
-| 🔍 **Codebase-aware** | Agents grep sibling files to catch patterns missed in the diff |
+| 🔍 **Codebase-aware** | Agents grep sibling files and read full source to catch patterns missed in the diff |
 | 💬 **PR comment** | Findings posted as a single organized comment on the PR |
 | 📝 **Summary** | Overall review summary posted as the review body |
 | 🔄 **Per-commit review** | SHA-scoped markers — new pushes get fresh reviews |
@@ -172,6 +172,32 @@ on:
 ### Re-running a review
 
 Push a new commit — the review is SHA-scoped, so each new push gets a fresh review automatically. To force a re-review of the same commit, delete its `<!-- kiro-review-{SHA} -->` marker comment from the PR and re-run the workflow.
+
+### Adding an MCP server for semantic code search
+
+For deeper codebase awareness, you can add an MCP server like [Augment](https://www.augmentcode.com/) to the agent configs. This gives agents semantic code search instead of just `grep`.
+
+1. Add the MCP server to each agent's `.json` config:
+
+```json
+{
+  "mcpServers": {
+    "auggie": {
+      "url": "https://api.augmentcode.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $AUGMENT_API_KEY"
+      },
+      "timeout": 5000
+    }
+  }
+}
+```
+
+2. Add `"@auggie"` to each agent's `allowedTools` array.
+
+3. Add `AUGMENT_API_KEY` to your repo secrets and to the workflow env.
+
+4. Update the prompts to use `augment_code_search` (with `repo_owner`, `repo_name`, `branch` params) as the primary search tool, with `grep` as fallback.
 
 ---
 

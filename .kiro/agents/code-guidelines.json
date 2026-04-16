@@ -1,0 +1,8 @@
+{
+  "name": "code-guidelines",
+  "description": "Audits PR diffs against repository coding guidelines (AGENTS.md, CLAUDE.md, .kiro/)",
+  "prompt": "file://./prompts/code-guidelines.md",
+  "tools": ["read", "write"],
+  "allowedTools": ["read", "write"],
+  "model": "claude-sonnet-4.6"
+}

@@ -2,58 +2,97 @@ name: Kiro Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to review'
+        required: true
+
+concurrency:
+  group: kiro-review-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 jobs:
   review:
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     env:
       GH_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for existing review
-        id: check
-        run: |
-          MARKER="<!-- kiro-review-complete -->"
-          COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate -q '.[].body')
-          if echo "$COMMENTS" | grep -qF "$MARKER"; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Review already posted — skipping"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Checkout PR branch (manual dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: gh pr checkout "$PR_NUMBER"
 
       - name: Install Kiro CLI
-        if: steps.check.outputs.skip == 'false'
         run: curl -fsSL https://cli.kiro.dev/install | bash
 
       - name: Generate PR diff
-        if: steps.check.outputs.skip == 'false'
-        run: gh pr diff "$PR_NUMBER" > /tmp/pr.diff
+        run: |
+          gh pr diff "$PR_NUMBER" > /tmp/pr-raw.diff
+          bash .github/scripts/annotate-diff.sh /tmp/pr-raw.diff > /tmp/pr.diff
+
+      - name: Gather repo guidelines
+        run: |
+          > /tmp/repo-guidelines.md
+          for f in AGENTS.md CLAUDE.md .kiro/steering/*.md; do
+            if [ -f "$f" ]; then
+              echo "--- ${f} ---" >> /tmp/repo-guidelines.md
+              cat "$f" >> /tmp/repo-guidelines.md
+              echo "" >> /tmp/repo-guidelines.md
+            fi
+          done
+          if [ ! -s /tmp/repo-guidelines.md ]; then
+            echo "No repo guidelines found." > /tmp/repo-guidelines.md
+          fi
+
+      - name: Fetch issue context
+        run: |
+          # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
+          gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
+          ISSUE_NUMS=$(grep -oiP '(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\K[0-9]+' /tmp/pr-body.txt || true)
+
+          if [ -n "$ISSUE_NUMS" ]; then
+            echo "Linked issues found: $ISSUE_NUMS"
+            echo "" > /tmp/issue-context.md
+            for NUM in $ISSUE_NUMS; do
+              echo "--- Issue #${NUM} ---" >> /tmp/issue-context.md
+              gh issue view "$NUM" --json title,body -q '"# \(.title)\n\(.body)"' >> /tmp/issue-context.md 2>/dev/null || echo "(Could not fetch issue #${NUM})" >> /tmp/issue-context.md
+              echo "" >> /tmp/issue-context.md
+            done
+          else
+            echo "No linked issues found"
+            echo "No linked issue context available." > /tmp/issue-context.md
+          fi
 
       - name: Run Kiro code review
-        if: steps.check.outputs.skip == 'false'
         env:
           KIRO_API_KEY: ${{ secrets.KIRO_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
         run: |
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+          PR_BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q '.headRefName')
+
           kiro-cli chat \
             --no-interactive \
             --agent code-reviewer \
-            --trust-tools=read,write,subagent \
-            "Review the code diff at /tmp/pr.diff. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
+            --trust-tools=read,write,grep,shell,subagent \
+            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Repo guidelines are at /tmp/repo-guidelines.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 4 review subagents in parallel (2x guidelines, 1x bugs, 1x history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
-        if: steps.check.outputs.skip == 'false'
         run: bash .github/scripts/post-review.sh
-
-      - name: Post marker comment
-        if: steps.check.outputs.skip == 'false'
-        run: gh pr comment "$PR_NUMBER" --body "<!-- kiro-review-complete -->"

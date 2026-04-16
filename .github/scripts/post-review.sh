@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Posts kiro code review findings as a PR review via the GitHub API.
-# Expects: GITHUB_REPOSITORY, PR_NUMBER, GH_TOKEN (set by the workflow)
+# Posts a PR review with inline comments via the GitHub reviews API.
+# Summary goes in the review body, findings become inline comments on specific lines.
+# Expects: PR_NUMBER, GITHUB_REPOSITORY, GH_TOKEN (set by the workflow)
 
 REVIEW_FILE="/tmp/kiro-review.json"
-OWNER_REPO="$GITHUB_REPOSITORY"
 PR="$PR_NUMBER"
 
 # If no findings file, post a clean review
 if [[ ! -f "$REVIEW_FILE" ]]; then
   echo "No review file found — posting clean summary"
-  gh api "repos/${OWNER_REPO}/pulls/${PR}/reviews" \
+  gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
     -f body="✅ **Kiro Code Review** — No issues found." \
     -f event="COMMENT"
   exit 0
@@ -20,34 +20,57 @@ fi
 # Validate JSON
 if ! jq empty "$REVIEW_FILE" 2>/dev/null; then
   echo "::error::Invalid JSON in $REVIEW_FILE"
+  echo "--- File contents ---"
+  cat "$REVIEW_FILE"
+  echo "--- End of file ---"
   exit 1
 fi
 
-COMMENT_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
-SUMMARY=$(jq -r '.summary // "No summary provided."' "$REVIEW_FILE")
-BODY="🤖 **Kiro Code Review**
+FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 
-${SUMMARY}
+# Build review body (summary + strengths + verdict)
+BODY=$(jq -r '
+  def verdict_label:
+    (.verdict // "no verdict") | ascii_downcase |
+    if . == "merge" then "✅ Merge"
+    elif . == "merge with fixes" then "Merge with fixes"
+    elif . == "needs rework" then "Needs rework"
+    else "No verdict" end;
 
----
-*Found ${COMMENT_COUNT} finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
+  "🤖 **Kiro Code Review**\n\n" +
+  (.summary // "No summary provided.") + "\n\n" +
+  (if .strengths and (.strengths | length) > 0
+    then "### Strengths\n" + (.strengths | map("- \(.)") | join("\n")) + "\n\n"
+    else "" end) +
+  "**Verdict: " + verdict_label + "**" +
+  (if .verdict_reason and .verdict_reason != "" then " — " + .verdict_reason else "" end) +
+  "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).* · To re-run, go to Actions → Kiro Code Review → Run workflow."
+' "$REVIEW_FILE")
 
-if [[ "$COMMENT_COUNT" -eq 0 ]]; then
-  gh api "repos/${OWNER_REPO}/pulls/${PR}/reviews" \
+if [[ "$FINDING_COUNT" -eq 0 ]]; then
+  gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" \
     -f body="$BODY" \
     -f event="COMMENT"
 else
-  # Build the payload with inline comments
+  # Build payload with inline comments
   PAYLOAD=$(jq -n \
     --arg body "$BODY" \
     --slurpfile review "$REVIEW_FILE" \
     '{
       body: $body,
       event: "COMMENT",
-      comments: [ $review[0].comments[] | {path, line, side, body} ]
+      comments: [
+        $review[0].comments[] |
+        {
+          path: .path,
+          line: .line,
+          side: "RIGHT",
+          body: ("**[" + (.severity // "low") + "]** " + .body + " _(confidence: " + ((.confidence // 0) | tostring) + ")_")
+        }
+      ]
     }')
 
-  echo "$PAYLOAD" | gh api "repos/${OWNER_REPO}/pulls/${PR}/reviews" --input -
+  echo "$PAYLOAD" | gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/reviews" --input -
 fi
 
-echo "Review posted successfully (${COMMENT_COUNT} inline comments)"
+echo "Review posted successfully (${FINDING_COUNT} inline comments)"

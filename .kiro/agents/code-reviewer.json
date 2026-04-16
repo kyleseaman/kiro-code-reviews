@@ -1,8 +1,18 @@
 {
   "name": "code-reviewer",
-  "description": "Coordinates code review by spawning security and quality subagents in parallel, then merging findings",
+  "description": "Coordinates code review by spawning 4 specialized subagents (2x guidelines, bugs, history), filtering by confidence, and performing design review",
   "prompt": "file://./prompts/code-reviewer.md",
-  "tools": ["read", "write", "subagent"],
-  "allowedTools": ["read", "write", "subagent"],
-  "model": "claude-sonnet-4"
+  "tools": ["read", "write", "grep", "subagent"],
+  "allowedTools": ["read", "write", "grep", "subagent", "@auggie"],
+  "model": "claude-opus-4.6",
+  "mcpServers": {
+    "auggie": {
+      "url": "https://api.augmentcode.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $AUGMENT_API_KEY"
+      },
+      "timeout": 5000,
+      "disabled": true
+    }
+  }
 }

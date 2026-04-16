@@ -1,8 +1,0 @@
-{
-  "name": "code-security",
-  "description": "Reviews PR diffs for security vulnerabilities",
-  "prompt": "file://./prompts/code-security.md",
-  "tools": ["read", "write", "grep"],
-  "allowedTools": ["read", "write", "grep"],
-  "model": "claude-sonnet-4"
-}

@@ -1,0 +1,18 @@
+{
+  "name": "code-bugs",
+  "description": "Scans PR diffs for obvious bugs, error handling issues, and test coverage gaps",
+  "prompt": "file://./prompts/code-bugs.md",
+  "tools": ["read", "write", "grep"],
+  "allowedTools": ["read", "write", "grep", "@auggie"],
+  "model": "claude-sonnet-4.6",
+  "mcpServers": {
+    "auggie": {
+      "url": "https://api.augmentcode.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $AUGMENT_API_KEY"
+      },
+      "timeout": 5000,
+      "disabled": true
+    }
+  }
+}

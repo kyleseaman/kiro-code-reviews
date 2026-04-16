@@ -11,7 +11,7 @@ Automated PR code reviews powered by [Kiro CLI](https://kiro.dev/cli/) in headle
 
 ```mermaid
 flowchart LR
-    A[PR opened] --> B[Install Kiro CLI]
+    A[PR opened or\nmarked ready] --> B[Install Kiro CLI]
     B --> C[Annotate diff with line numbers]
     C --> D[Gather repo guidelines]
     D --> E[Fetch linked issue context]
@@ -28,7 +28,7 @@ flowchart LR
     K --> L[Post PR review with inline comments]
 ```
 
-1. A pull request is opened
+1. A pull request is opened (or a draft PR is marked ready)
 2. Kiro CLI is installed and the PR diff is annotated with absolute line numbers
 3. Repo guidelines (AGENTS.md, CLAUDE.md, .kiro/) are gathered
 4. Linked issue context is fetched from the PR body (parses `Closes #N`, `Fixes #N`, etc.)
@@ -55,7 +55,7 @@ flowchart LR
 | **Inline comments** | Findings posted on exact diff lines with confidence scores |
 | **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
 | **Verdict** | Clear merge recommendation: merge, merge with fixes, or needs rework |
-| **One-time review** | Runs once on PR open; re-run manually via workflow_dispatch |
+| **One-time review** | Runs on PR open or draft ready; re-run manually via workflow_dispatch |
 
 ---
 
@@ -164,21 +164,21 @@ By default, the review runs **once when a PR is opened**. Subsequent pushes don'
 To change this behavior, edit the `types` array in `.github/workflows/kiro-code-review.yml`:
 
 ```yaml
-# Default: review on first commit only (manual re-run for subsequent pushes)
+# Default: review on open or when draft is marked ready (manual re-run for subsequent pushes)
 on:
   pull_request:
-    types: [opened]
+    types: [opened, ready_for_review]
 
 # Review on every push (more thorough, higher cost)
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, ready_for_review, synchronize]
 ```
 
 | Mode | Trigger | Cost | Best for |
 |------|---------|------|----------|
-| `[opened]` (default) | First commit only | Low — one review per PR | Teams that iterate quickly and re-run manually |
-| `[opened, synchronize]` | Every push | Higher — review per push | Teams that want continuous automated feedback |
+| `[opened, ready_for_review]` (default) | First commit / draft ready | Low — one review per PR | Teams that iterate quickly and re-run manually |
+| `+ synchronize` | Every push | Higher — review per push | Teams that want continuous automated feedback |
 
 Both modes support manual re-runs via workflow_dispatch.
 

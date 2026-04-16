@@ -14,6 +14,8 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 
    Replace `{repo_owner}`, `{repo_name}`, and `{branch}` with the values from the task prompt.
 
+   Before spawning, note: "Spawning subagents — this typically takes 2-4 minutes."
+
 4. While subagents run, build codebase context for your design review:
    - If `augment_code_search` is available, use it to search for code related to the changed files and the issue description. Pass the `repo_owner`, `repo_name`, and `branch` from the task prompt. If unavailable, fall back to `grep` and `read`.
    - Read the **full source files** that the diff modifies (not just the diff hunks) to understand the surrounding code.

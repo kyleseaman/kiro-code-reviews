@@ -10,7 +10,8 @@
       "url": "https://api.augmentcode.com/mcp",
       "headers": {
         "Authorization": "Bearer $AUGMENT_API_KEY"
-      }
+      },
+      "timeout": 5000
     }
   }
 }

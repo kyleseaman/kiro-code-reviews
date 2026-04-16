@@ -10,7 +10,7 @@ on:
         required: true
 
 concurrency:
-  group: kiro-review-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  group: kiro-review-${{ github.event.pull_request.number || github.event.inputs.pr_number || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -58,7 +58,7 @@ jobs:
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
           gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
-          ISSUE_NUMS=$(grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' /tmp/pr-body.txt | grep -oE '[0-9]+' || true)
+          ISSUE_NUMS=$(grep -oiE '\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#[0-9]+' /tmp/pr-body.txt | sed 's/.*#//' || true)
 
           if [ -n "$ISSUE_NUMS" ]; then
             echo "Linked issues found: $ISSUE_NUMS"

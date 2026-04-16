@@ -30,8 +30,9 @@ while IFS= read -r line; do
       ;;
     "@@"*)
       # Parse new-file line number from hunk header: @@ -old,count +new,count @@
+      PREV=$LINE
       LINE=$(echo "$line" | sed -E 's/^@@ -[0-9]+(,[0-9]+)? \+([0-9]+)(,[0-9]+)? @@.*/\2/')
-      [[ "$LINE" =~ ^[0-9]+$ ]] || LINE=1
+      [[ "$LINE" =~ ^[0-9]+$ ]] || LINE=$PREV
       echo "$line"
       ;;
     "+"*)

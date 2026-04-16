@@ -23,30 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check for existing review
-        id: check
-        run: |
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          MARKER="<!-- kiro-review-${HEAD_SHA} -->"
-          COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate -q '.[].body')
-          if echo "$COMMENTS" | grep -qF "$MARKER"; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Review already posted for ${HEAD_SHA} — skipping"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-            echo "marker=$MARKER" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Install Kiro CLI
-        if: steps.check.outputs.skip == 'false'
         run: curl -fsSL https://cli.kiro.dev/install | bash
 
       - name: Generate PR diff
-        if: steps.check.outputs.skip == 'false'
         run: gh pr diff "$PR_NUMBER" > /tmp/pr.diff
 
       - name: Fetch issue context
-        if: steps.check.outputs.skip == 'false'
         run: |
           # Extract linked issue numbers from PR body (e.g. "Closes #123", "Fixes #456")
           gh pr view "$PR_NUMBER" --json body -q '.body' > /tmp/pr-body.txt
@@ -66,7 +49,6 @@ jobs:
           fi
 
       - name: Run Kiro code review
-        if: steps.check.outputs.skip == 'false'
         env:
           KIRO_API_KEY: ${{ secrets.KIRO_API_KEY }}
           KIRO_LOG_NO_COLOR: "1"
@@ -82,9 +64,4 @@ jobs:
             "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the code-security and code-quality subagents in parallel, merge their findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
-        if: steps.check.outputs.skip == 'false'
         run: bash .github/scripts/post-review.sh
-
-      - name: Post marker comment
-        if: steps.check.outputs.skip == 'false'
-        run: gh pr comment "$PR_NUMBER" --body "${{ steps.check.outputs.marker }}"

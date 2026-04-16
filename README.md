@@ -55,7 +55,7 @@ flowchart LR
 | 🔍 **Codebase-aware** | Agents grep sibling files and read full source to catch patterns missed in the diff |
 | 💬 **PR comment** | Findings posted as a single organized comment on the PR |
 | 📝 **Summary** | Overall review summary posted as the review body |
-| 🔄 **Per-commit review** | SHA-scoped markers — new pushes get fresh reviews |
+| 🔄 **Per-commit review** | Each push updates a single review comment — no duplicate noise |
 
 ---
 
@@ -171,7 +171,7 @@ on:
 
 ### Re-running a review
 
-Push a new commit — the review is SHA-scoped, so each new push gets a fresh review automatically. To force a re-review of the same commit, delete its `<!-- kiro-review-{SHA} -->` marker comment from the PR and re-run the workflow.
+Push a new commit — the review runs again and updates the existing review comment in place. Only one review comment exists per PR, always showing the latest findings.
 
 ### Adding an MCP server for semantic code search
 
@@ -237,7 +237,7 @@ The coordinator agent reads the linked issue context first, then delegates line-
 | Workflow doesn't trigger | Ensure the workflow file is on the default branch |
 | "API key" errors | Verify `KIRO_API_KEY` is set in repo secrets |
 | No review posted | Check the workflow logs — the agent may not have found issues |
-| Review posted on every push | The SHA-scoped marker check may have failed — look for `<!-- kiro-review-{SHA} -->` in PR comments |
+| Duplicate review comments | The `<!-- kiro-code-review -->` marker in the comment body may have been removed — the script uses it to find and edit the existing comment |
 | No issue context | Ensure the PR body contains `Closes #N`, `Fixes #N`, or `Resolves #N` linking to an issue |
 
 ---

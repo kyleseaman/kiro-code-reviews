@@ -1,18 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Posts kiro code review findings as a PR comment via the GitHub API.
-# Expects: PR_NUMBER, GH_TOKEN (set by the workflow)
+# Posts or updates a single Kiro code review comment on the PR.
+# Uses a hidden marker to find and edit the existing comment on subsequent reviews.
+# Expects: PR_NUMBER, GITHUB_REPOSITORY, GH_TOKEN (set by the workflow)
 
 REVIEW_FILE="/tmp/kiro-review.json"
 COMMENT_FILE="/tmp/kiro-comment.md"
 PR="$PR_NUMBER"
+MARKER="<!-- kiro-code-review -->"
+
+# Find existing review comment
+COMMENT_ID=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${PR}/comments" --paginate -q \
+  ".[] | select(.body | contains(\"${MARKER}\")) | .id" | head -1)
+
+post_comment() {
+  if [[ -n "${COMMENT_ID:-}" ]]; then
+    echo "Updating existing review comment (${COMMENT_ID})"
+    gh api "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}" \
+      -X PATCH -F "body=@${COMMENT_FILE}"
+  else
+    echo "Creating new review comment"
+    gh pr comment "$PR" --body-file "$COMMENT_FILE"
+  fi
+}
 
 # If no findings file, post a clean summary
 if [[ ! -f "$REVIEW_FILE" ]]; then
   echo "No review file found — posting clean summary"
-  echo "✅ **Kiro Code Review** — No issues found." > "$COMMENT_FILE"
-  gh pr comment "$PR" --body-file "$COMMENT_FILE"
+  printf '%s\n%s' "$MARKER" "✅ **Kiro Code Review** — No issues found." > "$COMMENT_FILE"
+  post_comment
   exit 0
 fi
 
@@ -28,7 +45,7 @@ fi
 FINDING_COUNT=$(jq '.comments | length' "$REVIEW_FILE")
 
 # Build the entire comment via jq to avoid shell expansion of user content
-jq -r '
+jq -r --arg marker "$MARKER" '
   def severity_section(sev; heading):
     [.comments[] | select(.severity == sev)]
     | if length > 0 then
@@ -43,6 +60,7 @@ jq -r '
     elif .verdict == "needs rework" then "🛑"
     else "❓" end;
 
+  $marker + "\n" +
   "🤖 **Kiro Code Review**\n\n" +
   (.summary // "No summary provided.") + "\n\n" +
   (if .strengths and (.strengths | length) > 0
@@ -56,6 +74,6 @@ jq -r '
   "\n\n---\n*Found \(.comments | length) finding(s). Powered by [Kiro CLI](https://kiro.dev/docs/cli/headless/).*"
 ' "$REVIEW_FILE" > "$COMMENT_FILE"
 
-gh pr comment "$PR" --body-file "$COMMENT_FILE"
+post_comment
 
 echo "Review posted successfully (${FINDING_COUNT} findings)"

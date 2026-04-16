@@ -17,6 +17,9 @@ fi
 # Validate JSON
 if ! jq empty "$REVIEW_FILE" 2>/dev/null; then
   echo "::error::Invalid JSON in $REVIEW_FILE"
+  echo "--- File contents ---"
+  cat "$REVIEW_FILE"
+  echo "--- End of file ---"
   exit 1
 fi
 

@@ -18,10 +18,12 @@ flowchart LR
     E --> F[Coordinator agent — Opus 4.8]
     F --> G[Guidelines]
     F --> H[Steering]
+    F --> S[Security]
     F --> I[Bug Detection]
     F --> J[Git History]
     G --> K[Filter: confidence ≥ 80]
     H --> K
+    S --> K
     I --> K
     J --> K
     F --> K
@@ -32,9 +34,10 @@ flowchart LR
 2. Kiro CLI is installed and the PR diff is annotated with absolute line numbers
 3. Repo guidelines (AGENTS.md, CLAUDE.md) and Kiro steering rules (`.kiro/steering/`) are gathered separately
 4. Linked issue context is fetched from the PR body (parses `Closes #N`, `Fixes #N`, etc.)
-5. The coordinator agent (Opus 4.8) spawns **4 subagents in parallel** (Sonnet 5):
+5. The coordinator agent (Opus 4.8) spawns **5 subagents in parallel** (Sonnet 5):
    - **Guidelines** — compliance against AGENTS.md / CLAUDE.md
    - **Steering** — adherence to `.kiro/steering/*.md`, honoring `inclusion: always | fileMatch | manual`
+   - **Security** — injection, authz/authn gaps, secret handling, SSRF, unsafe shell, input validation
    - **Bug Detection** — scans for bugs, error handling issues, and test coverage gaps
    - **Git History** — analyzes blame/log for context (fragile code, reverted fixes, churn)
 6. The coordinator performs its own **design review** — evaluating completeness, abstraction layer, and approach
@@ -47,11 +50,12 @@ flowchart LR
 
 | | |
 |---|---|
-| **4-agent architecture** | Guidelines compliance, Kiro steering adherence, bug detection, git history analysis — all in parallel |
+| **5-agent architecture** | Guidelines compliance, Kiro steering adherence, security review, bug detection, git history analysis — all in parallel |
 | **Confidence scoring** | Each finding scored 0-100; only ≥80 confidence findings are posted |
 | **Design review** | Coordinator evaluates issue completeness, abstraction layer, sibling components |
 | **Repo guidelines** | Checks changes against AGENTS.md and CLAUDE.md |
 | **Kiro steering** | Dedicated agent audits `.kiro/steering/*.md`, honoring `inclusion` front-matter (always / fileMatch / manual) |
+| **Security review** | Dedicated agent for injection, authz/authn, secrets, SSRF, unsafe shell, and input validation |
 | **Git history context** | Uses blame/log to identify fragile code, reverted fixes, and churn patterns |
 | **Severity tags** | Findings tagged `[high]`, `[medium]`, `[low]` for clear prioritization |
 | **Inline comments** | Findings posted on exact diff lines with confidence scores |
@@ -80,12 +84,14 @@ your-repo/
         ├── code-bugs.json              # Bug detection (Sonnet 5)
         ├── code-guidelines.json        # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
         ├── code-steering.json          # Kiro steering adherence (Sonnet 5)
+        ├── code-security.json          # Security review (Sonnet 5)
         ├── code-history.json           # Git history analysis (Sonnet 5)
         └── prompts/
             ├── code-reviewer.md
             ├── code-bugs.md
             ├── code-guidelines.md
             ├── code-steering.md
+            ├── code-security.md
             └── code-history.md
 ```
 
@@ -140,6 +146,7 @@ Each agent has its own prompt file:
 - `.kiro/agents/prompts/code-bugs.md` — bug detection rules and focus areas
 - `.kiro/agents/prompts/code-guidelines.md` — AGENTS.md/CLAUDE.md compliance rules
 - `.kiro/agents/prompts/code-steering.md` — Kiro steering adherence + inclusion semantics
+- `.kiro/agents/prompts/code-security.md` — security review focus areas
 - `.kiro/agents/prompts/code-history.md` — git history analysis rules
 - `.kiro/agents/prompts/code-reviewer.md` — coordinator prompt (spawning, filtering, design review)
 
@@ -240,6 +247,7 @@ The gate fires on the coordinator's `needs rework` verdict, which its rubric res
 │  5. kiro-cli (coordinator — Opus 4.8)                 │
 │     ├── spawns code-guidelines  (Sonnet 5)         │
 │     ├── spawns code-steering    (Sonnet 5)         │
+│     ├── spawns code-security   (Sonnet 5)         │
 │     ├── spawns code-bugs        (Sonnet 5)         │
 │     ├── spawns code-history     (Sonnet 5)         │
 │     ├── filters by confidence (≥ 80)                  │
@@ -250,7 +258,7 @@ The gate fires on the coordinator's `needs rework` verdict, which its rubric res
 └──────────────────────────────────────────────────────┘
 ```
 
-The coordinator reads issue context and repo guidelines, then delegates analysis to 4 specialized subagents running in parallel. Each subagent scores findings by confidence (0-100). The coordinator filters out anything below 80, boosts confidence when the guidelines and steering agents agree, performs its own design review, and writes a merged result. The posting script submits it as a PR review with inline comments.
+The coordinator reads issue context and repo guidelines, then delegates analysis to 5 specialized subagents running in parallel. Each subagent scores findings by confidence (0-100). The coordinator filters out anything below 80, boosts confidence when the guidelines and steering agents agree, performs its own design review, and writes a merged result. The posting script submits it as a PR review with inline comments.
 
 ---
 
@@ -270,12 +278,14 @@ The coordinator reads issue context and repo guidelines, then delegates analysis
     ├── code-bugs.json               # Bug detection (Sonnet 5)
     ├── code-guidelines.json         # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
     ├── code-steering.json           # Kiro steering adherence (Sonnet 5)
+    ├── code-security.json           # Security review (Sonnet 5)
     ├── code-history.json            # Git history analysis (Sonnet 5)
     └── prompts/
         ├── code-reviewer.md         # Coordinator prompt
         ├── code-bugs.md             # Bug detection prompt
         ├── code-guidelines.md       # Guidelines compliance prompt
         ├── code-steering.md         # Kiro steering adherence prompt
+        ├── code-security.md         # Security review prompt
         └── code-history.md          # Git history prompt
 ```
 

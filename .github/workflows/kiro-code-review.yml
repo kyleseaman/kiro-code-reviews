@@ -121,7 +121,7 @@ jobs:
             --no-interactive \
             --agent code-reviewer \
             --trust-tools=read,write,grep,shell,subagent \
-            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Flat repo guidelines (AGENTS.md, CLAUDE.md) are at /tmp/repo-guidelines.md, and Kiro steering rules are at /tmp/kiro-steering.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 5 review subagents in parallel (guidelines, steering, security, bugs, history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
+            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Flat repo guidelines (AGENTS.md, CLAUDE.md) are at /tmp/repo-guidelines.md, and Kiro steering rules are at /tmp/kiro-steering.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 6 review subagents in parallel (guidelines, steering, security, tests, bugs, history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
         env:

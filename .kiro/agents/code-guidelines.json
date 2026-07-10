@@ -1,6 +1,6 @@
 {
   "name": "code-guidelines",
-  "description": "Audits PR diffs against repository coding guidelines (AGENTS.md, CLAUDE.md, .kiro/)",
+  "description": "Audits PR diffs against repository coding guidelines (AGENTS.md, CLAUDE.md)",
   "prompt": "file://./prompts/code-guidelines.md",
   "tools": ["read", "write"],
   "allowedTools": ["read", "write"],

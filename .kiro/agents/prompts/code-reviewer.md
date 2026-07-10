@@ -26,7 +26,7 @@ You coordinate a code review by spawning specialized subagents in parallel, then
 
 5. Read all subagent output files: `/tmp/kiro-guidelines.json`, `/tmp/kiro-steering.json`, `/tmp/kiro-security.json`, `/tmp/kiro-bugs.json`, `/tmp/kiro-history.json`. Skip any that are missing or invalid.
 
-6. **Filter by confidence**: First, if a guidelines finding and a steering finding flag the same issue (same file + similar description), boost their confidence by 10 (cap at 100). Then drop any finding whose final confidence is below 80.
+6. **Filter by confidence**: First, if two agents independently flag the same issue (same file + similar description — e.g. guidelines and steering, or security and bugs), boost their confidence by 10 (cap at 100). Then drop any finding whose final confidence is below 80.
 
 7. Perform your own **design review**:
    - Does the PR address the linked issue completely?

@@ -36,10 +36,22 @@ post_review() {
     -f event="COMMENT"
 }
 
-# --- No findings file: post a clean review (no verdict → gate can't block) ------
+# --- No review file: the coordinator always writes one on a compliant run, so a
+# --- missing file means the review malfunctioned. Never claim "no issues found".
+# --- Advisory mode: report honestly, pass. Blocking mode: fail closed.
 if [[ ! -f "$REVIEW_FILE" ]]; then
-  echo "No review file found — posting clean summary"
-  post_review "✅ **Kiro Code Review** — No issues found."
+  echo "No review file found — review did not complete."
+  if is_truthy "${KIRO_REVIEW_BLOCK:-false}"; then
+    LABELS=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}" --jq '.labels[].name' 2>/dev/null || true)
+    if printf '%s\n' "$LABELS" | grep -qx "$BYPASS_LABEL"; then
+      post_review "⚠️ **Kiro Code Review did not complete** — no review output was produced (check the workflow logs). The \`${BYPASS_LABEL}\` label is set, so this check will not fail."
+      exit 0
+    fi
+    post_review "🚫 **Kiro Code Review did not complete** — no review output was produced, so this check is failing closed (blocking mode). Check the workflow logs and re-run, or add the \`${BYPASS_LABEL}\` label to override."
+    echo "::error::Merge gate: missing review output with blocking enabled → failing check (fail-closed)."
+    exit 1
+  fi
+  post_review "⚠️ **Kiro Code Review did not complete** — no review output was produced. Check the workflow logs and re-run."
   exit 0
 fi
 
@@ -97,6 +109,16 @@ BODY="${BODY}${GATE_SUFFIX}"
 if [[ "$FINDING_COUNT" -eq 0 ]]; then
   post_review "$BODY"
 else
+  # Partition findings: only integer-line findings go inline (a single bad line
+  # would 400 the whole reviews call); the rest are appended to the body.
+  UNANCHORED=$(jq -r '
+    [.comments // [] | .[] | select((.line | type) != "number") |
+      "- **\(.path)** — **[" + (.severity // "low") + "]** " + .body +
+      " _(confidence: " + ((.confidence // 0) | tostring) + ")_"] |
+    if length > 0 then "\n\n### Additional findings (no diff line)\n" + join("\n") else "" end
+  ' "$REVIEW_FILE")
+  BODY="${BODY}${UNANCHORED}"
+
   PAYLOAD=$(jq -n \
     --arg body "$BODY" \
     --slurpfile review "$REVIEW_FILE" \
@@ -105,6 +127,7 @@ else
       event: "COMMENT",
       comments: [
         $review[0].comments[] |
+        select((.line | type) == "number") |
         {
           path: .path,
           line: .line,

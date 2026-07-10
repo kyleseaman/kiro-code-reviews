@@ -222,6 +222,8 @@ The gate fires on the coordinator's `needs rework` verdict, which its rubric res
 
 **Per-PR override.** Add the `skip-kiro-review` label to a pull request to bypass the gate for that PR — the review still runs and posts findings, but a `needs rework` verdict won't fail the check. Useful for urgent hotfixes or overriding a false block.
 
+**Fail-closed on missing output.** If the review produces no output at all (coordinator crash, model error), the check posts "review did not complete" instead of claiming the code is clean. In blocking mode this fails the check; the `skip-kiro-review` label overrides it.
+
 > [!NOTE]
 > LLM verdicts are non-deterministic — the same PR can flip between `merge with fixes` and `needs rework` across runs. Consider running advisory for a week before enabling blocking, and rely on the label override as an escape hatch.
 

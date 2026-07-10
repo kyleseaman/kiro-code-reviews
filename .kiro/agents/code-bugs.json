@@ -4,7 +4,7 @@
   "prompt": "file://./prompts/code-bugs.md",
   "tools": ["read", "write", "grep"],
   "allowedTools": ["read", "write", "grep", "@auggie"],
-  "model": "claude-sonnet-4.6",
+  "model": "claude-sonnet-5",
   "mcpServers": {
     "auggie": {
       "url": "https://api.augmentcode.com/mcp",

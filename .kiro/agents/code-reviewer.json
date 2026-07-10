@@ -1,10 +1,10 @@
 {
   "name": "code-reviewer",
-  "description": "Coordinates code review by spawning 4 specialized subagents (2x guidelines, bugs, history), filtering by confidence, and performing design review",
+  "description": "Coordinates code review by spawning 6 specialized subagents (guidelines, steering, security, tests, bugs, history), filtering by confidence, and performing design review",
   "prompt": "file://./prompts/code-reviewer.md",
   "tools": ["read", "write", "grep", "subagent"],
   "allowedTools": ["read", "write", "grep", "subagent", "@auggie"],
-  "model": "claude-opus-4.6",
+  "model": "claude-opus-4.8",
   "mcpServers": {
     "auggie": {
       "url": "https://api.augmentcode.com/mcp",

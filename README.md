@@ -15,13 +15,17 @@ flowchart LR
     B --> C[Annotate diff with line numbers]
     C --> D[Gather repo guidelines]
     D --> E[Fetch linked issue context]
-    E --> F[Coordinator agent — Opus 4.6]
-    F --> G[Guidelines #1]
-    F --> H[Guidelines #2]
+    E --> F[Coordinator agent — Opus 4.8]
+    F --> G[Guidelines]
+    F --> H[Steering]
+    F --> S[Security]
+    F --> T[Tests]
     F --> I[Bug Detection]
     F --> J[Git History]
     G --> K[Filter: confidence ≥ 80]
     H --> K
+    S --> K
+    T --> K
     I --> K
     J --> K
     F --> K
@@ -30,10 +34,13 @@ flowchart LR
 
 1. A pull request is opened (or a draft PR is marked ready)
 2. Kiro CLI is installed and the PR diff is annotated with absolute line numbers
-3. Repo guidelines (AGENTS.md, CLAUDE.md, .kiro/) are gathered
+3. Repo guidelines (AGENTS.md, CLAUDE.md) and Kiro steering rules (`.kiro/steering/`) are gathered separately
 4. Linked issue context is fetched from the PR body (parses `Closes #N`, `Fixes #N`, etc.)
-5. The coordinator agent (Opus 4.6) spawns **4 subagents in parallel** (Sonnet 4.6):
-   - **Guidelines #1 & #2** — redundant compliance checks against repo guidelines (findings confirmed by both get boosted confidence)
+5. The coordinator agent (Opus 4.8) spawns **6 subagents in parallel** (Sonnet 5):
+   - **Guidelines** — compliance against AGENTS.md / CLAUDE.md
+   - **Steering** — adherence to `.kiro/steering/*.md`, honoring `inclusion: always | fileMatch | manual`
+   - **Security** — injection, authz/authn gaps, secret handling, SSRF, unsafe shell, input validation
+   - **Tests** — test adequacy: uncovered new behavior, tautological tests, weakened assertions
    - **Bug Detection** — scans for bugs, error handling issues, and test coverage gaps
    - **Git History** — analyzes blame/log for context (fragile code, reverted fixes, churn)
 6. The coordinator performs its own **design review** — evaluating completeness, abstraction layer, and approach
@@ -46,15 +53,19 @@ flowchart LR
 
 | | |
 |---|---|
-| **4-agent architecture** | Guidelines compliance (2x), bug detection, git history analysis — all in parallel |
+| **6-agent architecture** | Guidelines compliance, Kiro steering adherence, security review, test adequacy, bug detection, git history analysis — all in parallel |
 | **Confidence scoring** | Each finding scored 0-100; only ≥80 confidence findings are posted |
 | **Design review** | Coordinator evaluates issue completeness, abstraction layer, sibling components |
-| **Repo guidelines** | Checks changes against AGENTS.md, CLAUDE.md, and .kiro/ conventions |
+| **Repo guidelines** | Checks changes against AGENTS.md and CLAUDE.md |
+| **Kiro steering** | Dedicated agent audits `.kiro/steering/*.md`, honoring `inclusion` front-matter (always / fileMatch / manual) |
+| **Security review** | Dedicated agent for injection, authz/authn, secrets, SSRF, unsafe shell, and input validation |
+| **Test adequacy** | Dedicated agent verifying the PR proves its own claims — uncovered behavior, tautological tests, weakened assertions |
 | **Git history context** | Uses blame/log to identify fragile code, reverted fixes, and churn patterns |
 | **Severity tags** | Findings tagged `[high]`, `[medium]`, `[low]` for clear prioritization |
 | **Inline comments** | Findings posted on exact diff lines with confidence scores |
 | **Issue-aware** | Fetches linked issue context to evaluate whether the PR solves the stated problem |
 | **Verdict** | Clear merge recommendation: merge, merge with fixes, or needs rework |
+| **Merge gate** | Optional — a `needs rework` verdict can fail the check to block merge (`KIRO_REVIEW_BLOCK`), with a `skip-kiro-review` label bypass |
 | **One-time review** | Runs on PR open or draft ready; re-run manually via workflow_dispatch |
 
 ---
@@ -73,14 +84,20 @@ your-repo/
 │       └── kiro-code-review.yml
 └── .kiro/
     └── agents/
-        ├── code-reviewer.json          # Coordinator (Opus 4.6)
-        ├── code-bugs.json              # Bug detection (Sonnet 4.6)
-        ├── code-guidelines.json        # Guidelines compliance (Sonnet 4.6)
-        ├── code-history.json           # Git history analysis (Sonnet 4.6)
+        ├── code-reviewer.json          # Coordinator (Opus 4.8)
+        ├── code-bugs.json              # Bug detection (Sonnet 5)
+        ├── code-guidelines.json        # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
+        ├── code-steering.json          # Kiro steering adherence (Sonnet 5)
+        ├── code-security.json          # Security review (Sonnet 5)
+        ├── code-tests.json             # Test adequacy (Sonnet 5)
+        ├── code-history.json           # Git history analysis (Sonnet 5)
         └── prompts/
             ├── code-reviewer.md
             ├── code-bugs.md
             ├── code-guidelines.md
+            ├── code-steering.md
+            ├── code-security.md
+            ├── code-tests.md
             └── code-history.md
 ```
 
@@ -133,7 +150,10 @@ The action posts a PR review with inline comments:
 Each agent has its own prompt file:
 
 - `.kiro/agents/prompts/code-bugs.md` — bug detection rules and focus areas
-- `.kiro/agents/prompts/code-guidelines.md` — guidelines compliance rules
+- `.kiro/agents/prompts/code-guidelines.md` — AGENTS.md/CLAUDE.md compliance rules
+- `.kiro/agents/prompts/code-steering.md` — Kiro steering adherence + inclusion semantics
+- `.kiro/agents/prompts/code-security.md` — security review focus areas
+- `.kiro/agents/prompts/code-tests.md` — test adequacy rules and anti-noise categories
 - `.kiro/agents/prompts/code-history.md` — git history analysis rules
 - `.kiro/agents/prompts/code-reviewer.md` — coordinator prompt (spawning, filtering, design review)
 
@@ -151,11 +171,11 @@ Edit the `model` field in any agent's `.json` config:
 
 ```json
 {
-  "model": "claude-sonnet-4.6"
+  "model": "claude-sonnet-5"
 }
 ```
 
-The coordinator uses `claude-opus-4.6` by default; subagents use `claude-sonnet-4.6`.
+The coordinator uses `claude-opus-4.8` by default; subagents use `claude-sonnet-5`.
 
 ### When the review runs
 
@@ -194,6 +214,26 @@ Or from the CLI:
 gh workflow run kiro-code-review.yml -f pr_number=<PR_NUMBER>
 ```
 
+### Merge gate: block or advisory
+
+The review is **advisory by default** — it posts findings and a verdict but never fails the check. Flip it into a blocking gate with the `KIRO_REVIEW_BLOCK` flag:
+
+| `KIRO_REVIEW_BLOCK` | Behavior |
+|---|---|
+| `false` (default) | Advisory. Post findings and verdict; the check always passes. |
+| `true` | Blocking. A `needs rework` verdict fails the job. |
+
+Enable it by adding a repo/org **Actions variable** (Settings → Secrets and variables → Actions → Variables) named `KIRO_REVIEW_BLOCK` set to `true`. To make a failed review actually stop the merge, also mark the **Kiro Code Review** check as required under **Settings → Branches → Branch protection rules** — otherwise the red check is visible but the merge button stays active.
+
+The gate fires on the coordinator's `needs rework` verdict, which its rubric reserves for "high issues, wrong approach, or fundamentally incomplete." `merge` and `merge with fixes` never block.
+
+**Per-PR override.** Add the `skip-kiro-review` label to a pull request to bypass the gate for that PR — the review still runs and posts findings, but a `needs rework` verdict won't fail the check. Useful for urgent hotfixes or overriding a false block.
+
+**Fail-closed on missing output.** If the review produces no output at all (coordinator crash, model error), the check posts "review did not complete" instead of claiming the code is clean. In blocking mode this fails the check; the `skip-kiro-review` label overrides it.
+
+> [!NOTE]
+> LLM verdicts are non-deterministic — the same PR can flip between `merge with fixes` and `needs rework` across runs. Consider running advisory for a week before enabling blocking, and rely on the label override as an escape hatch.
+
 ### Adding an MCP server for semantic code search
 
 [Augment](https://www.augmentcode.com/) semantic code search is pre-configured but disabled by default. To enable it:
@@ -213,11 +253,13 @@ gh workflow run kiro-code-review.yml -f pr_number=<PR_NUMBER>
 │  1. Install CLI → 2. Annotate diff → 3. Guidelines   │
 │  4. Fetch linked issue context                        │
 │                                                       │
-│  5. kiro-cli (coordinator — Opus 4.6)                 │
-│     ├── spawns code-guidelines #1 (Sonnet 4.6)       │
-│     ├── spawns code-guidelines #2 (Sonnet 4.6)       │
-│     ├── spawns code-bugs        (Sonnet 4.6)         │
-│     ├── spawns code-history     (Sonnet 4.6)         │
+│  5. kiro-cli (coordinator — Opus 4.8)                 │
+│     ├── spawns code-guidelines  (Sonnet 5)         │
+│     ├── spawns code-steering    (Sonnet 5)         │
+│     ├── spawns code-security   (Sonnet 5)         │
+│     ├── spawns code-tests      (Sonnet 5)         │
+│     ├── spawns code-bugs        (Sonnet 5)         │
+│     ├── spawns code-history     (Sonnet 5)         │
 │     ├── filters by confidence (≥ 80)                  │
 │     ├── performs design review                        │
 │     └── merges → /tmp/kiro-review.json                │
@@ -226,7 +268,7 @@ gh workflow run kiro-code-review.yml -f pr_number=<PR_NUMBER>
 └──────────────────────────────────────────────────────┘
 ```
 
-The coordinator reads issue context and repo guidelines, then delegates analysis to 4 specialized subagents running in parallel. Each subagent scores findings by confidence (0-100). The coordinator filters out anything below 80, boosts confidence when both guidelines agents agree, performs its own design review, and writes a merged result. The posting script submits it as a PR review with inline comments.
+The coordinator reads issue context and repo guidelines, then delegates analysis to 6 specialized subagents running in parallel. Each subagent scores findings by confidence (0-100). The coordinator filters out anything below 80, boosts confidence when the guidelines and steering agents agree, performs its own design review, and writes a merged result. The posting script submits it as a PR review with inline comments.
 
 ---
 
@@ -242,14 +284,20 @@ The coordinator reads issue context and repo guidelines, then delegates analysis
 
 .kiro/
 └── agents/
-    ├── code-reviewer.json           # Coordinator (Opus 4.6)
-    ├── code-bugs.json               # Bug detection (Sonnet 4.6)
-    ├── code-guidelines.json         # Guidelines compliance (Sonnet 4.6)
-    ├── code-history.json            # Git history analysis (Sonnet 4.6)
+    ├── code-reviewer.json           # Coordinator (Opus 4.8)
+    ├── code-bugs.json               # Bug detection (Sonnet 5)
+    ├── code-guidelines.json         # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
+    ├── code-steering.json           # Kiro steering adherence (Sonnet 5)
+    ├── code-security.json           # Security review (Sonnet 5)
+    ├── code-tests.json              # Test adequacy (Sonnet 5)
+    ├── code-history.json            # Git history analysis (Sonnet 5)
     └── prompts/
         ├── code-reviewer.md         # Coordinator prompt
         ├── code-bugs.md             # Bug detection prompt
         ├── code-guidelines.md       # Guidelines compliance prompt
+        ├── code-steering.md         # Kiro steering adherence prompt
+        ├── code-security.md         # Security review prompt
+        ├── code-tests.md            # Test adequacy prompt
         └── code-history.md          # Git history prompt
 ```
 
@@ -263,7 +311,8 @@ The coordinator reads issue context and repo guidelines, then delegates analysis
 | "API key" errors | Verify `KIRO_API_KEY` is set in repo secrets |
 | No review posted | Check the workflow logs — the agent may not have found issues above the confidence threshold |
 | No issue context | Ensure the PR body contains `Closes #N`, `Fixes #N`, or `Resolves #N` linking to an issue |
-| No guidelines findings | Add an AGENTS.md, CLAUDE.md, or .kiro/ guidelines to your repo |
+| No guidelines findings | Add an AGENTS.md or CLAUDE.md to your repo |
+| No steering findings | Add `.kiro/steering/*.md` files; confirm their `inclusion` front-matter matches the changed files |
 | Want to re-run | Go to Actions → Kiro Code Review → Run workflow → enter PR number |
 
 ---

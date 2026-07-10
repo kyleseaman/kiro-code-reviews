@@ -29,9 +29,16 @@ permissions:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     env:
       PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+      # Merge gate. "false" (default) = advisory: post findings, never fail the job.
+      # "true" = block: a "needs rework" verdict fails this job, which blocks the merge
+      # when the "Kiro Code Review" check is required via branch protection.
+      # Set a repo/org Actions variable KIRO_REVIEW_BLOCK=true to enable.
+      # Per-PR escape hatch: add the `skip-kiro-review` label.
+      KIRO_REVIEW_BLOCK: ${{ vars.KIRO_REVIEW_BLOCK || 'false' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +61,9 @@ jobs:
 
       - name: Gather repo guidelines
         run: |
+          # Flat guidelines: AGENTS.md, CLAUDE.md
           > /tmp/repo-guidelines.md
-          for f in AGENTS.md CLAUDE.md .kiro/steering/*.md; do
+          for f in AGENTS.md CLAUDE.md; do
             if [ -f "$f" ]; then
               echo "--- ${f} ---" >> /tmp/repo-guidelines.md
               cat "$f" >> /tmp/repo-guidelines.md
@@ -63,7 +71,19 @@ jobs:
             fi
           done
           if [ ! -s /tmp/repo-guidelines.md ]; then
-            echo "No repo guidelines found." > /tmp/repo-guidelines.md
+            echo "No AGENTS.md or CLAUDE.md found." > /tmp/repo-guidelines.md
+          fi
+
+          # Kiro steering rules (separate, inclusion front-matter preserved)
+          > /tmp/kiro-steering.md
+          if ls .kiro/steering/*.md >/dev/null 2>&1; then
+            for f in .kiro/steering/*.md; do
+              echo "--- ${f} ---" >> /tmp/kiro-steering.md
+              cat "$f" >> /tmp/kiro-steering.md
+              echo "" >> /tmp/kiro-steering.md
+            done
+          else
+            echo "No Kiro steering files found under .kiro/steering/." > /tmp/kiro-steering.md
           fi
 
       - name: Fetch issue context
@@ -101,7 +121,7 @@ jobs:
             --no-interactive \
             --agent code-reviewer \
             --trust-tools=read,write,grep,shell,subagent \
-            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Repo guidelines are at /tmp/repo-guidelines.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 4 review subagents in parallel (2x guidelines, 1x bugs, 1x history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
+            "Review the code diff at /tmp/pr.diff. The linked issue context is at /tmp/issue-context.md. Flat repo guidelines (AGENTS.md, CLAUDE.md) are at /tmp/repo-guidelines.md, and Kiro steering rules are at /tmp/kiro-steering.md. The repo is ${REPO_OWNER}/${REPO_NAME} on branch ${PR_BRANCH}. Spawn the 6 review subagents in parallel (guidelines, steering, security, tests, bugs, history), filter by confidence, merge findings, and write the result to /tmp/kiro-review.json"
 
       - name: Post review to PR
         env:

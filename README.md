@@ -15,7 +15,7 @@ flowchart LR
     B --> C[Annotate diff with line numbers]
     C --> D[Gather repo guidelines]
     D --> E[Fetch linked issue context]
-    E --> F[Coordinator agent — Opus 4.6]
+    E --> F[Coordinator agent — Opus 4.8]
     F --> G[Guidelines]
     F --> H[Steering]
     F --> I[Bug Detection]
@@ -32,7 +32,7 @@ flowchart LR
 2. Kiro CLI is installed and the PR diff is annotated with absolute line numbers
 3. Repo guidelines (AGENTS.md, CLAUDE.md) and Kiro steering rules (`.kiro/steering/`) are gathered separately
 4. Linked issue context is fetched from the PR body (parses `Closes #N`, `Fixes #N`, etc.)
-5. The coordinator agent (Opus 4.6) spawns **4 subagents in parallel** (Sonnet 5):
+5. The coordinator agent (Opus 4.8) spawns **4 subagents in parallel** (Sonnet 5):
    - **Guidelines** — compliance against AGENTS.md / CLAUDE.md
    - **Steering** — adherence to `.kiro/steering/*.md`, honoring `inclusion: always | fileMatch | manual`
    - **Bug Detection** — scans for bugs, error handling issues, and test coverage gaps
@@ -76,7 +76,7 @@ your-repo/
 │       └── kiro-code-review.yml
 └── .kiro/
     └── agents/
-        ├── code-reviewer.json          # Coordinator (Opus 4.6)
+        ├── code-reviewer.json          # Coordinator (Opus 4.8)
         ├── code-bugs.json              # Bug detection (Sonnet 5)
         ├── code-guidelines.json        # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
         ├── code-steering.json          # Kiro steering adherence (Sonnet 5)
@@ -161,7 +161,7 @@ Edit the `model` field in any agent's `.json` config:
 }
 ```
 
-The coordinator uses `claude-opus-4.6` by default; subagents use `claude-sonnet-5`.
+The coordinator uses `claude-opus-4.8` by default; subagents use `claude-sonnet-5`.
 
 ### When the review runs
 
@@ -237,7 +237,7 @@ The gate fires on the coordinator's `needs rework` verdict, which its rubric res
 │  1. Install CLI → 2. Annotate diff → 3. Guidelines   │
 │  4. Fetch linked issue context                        │
 │                                                       │
-│  5. kiro-cli (coordinator — Opus 4.6)                 │
+│  5. kiro-cli (coordinator — Opus 4.8)                 │
 │     ├── spawns code-guidelines  (Sonnet 5)         │
 │     ├── spawns code-steering    (Sonnet 5)         │
 │     ├── spawns code-bugs        (Sonnet 5)         │
@@ -266,7 +266,7 @@ The coordinator reads issue context and repo guidelines, then delegates analysis
 
 .kiro/
 └── agents/
-    ├── code-reviewer.json           # Coordinator (Opus 4.6)
+    ├── code-reviewer.json           # Coordinator (Opus 4.8)
     ├── code-bugs.json               # Bug detection (Sonnet 5)
     ├── code-guidelines.json         # AGENTS.md/CLAUDE.md compliance (Sonnet 5)
     ├── code-steering.json           # Kiro steering adherence (Sonnet 5)
